@@ -1,305 +1,313 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import fs from 'fs';
 import path from 'path';
 
-// ─── Cargar todos los nodos del Brain en memoria ──────────────────────────────
+// ─── Cargar base de datos local en memoria ────────────────────────────────────
 let allNodes = [];
+let routerContent = "";
+let leyesContent = "";
+
 try {
   const dataPath = path.join(process.cwd(), 'src/data/brain-data.json');
   const raw = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
   allNodes = raw.nodes.filter(n => n.id !== 'BOGATI_BRAIN');
+
+  const routerNode = allNodes.find(n => n.id.toLowerCase() === 'router.md');
+  if (routerNode) routerContent = routerNode.content;
+
+  const leyesNode = allNodes.find(n => n.id.toLowerCase() === 'leyes_supremas.md');
+  if (leyesNode) leyesContent = leyesNode.content;
 } catch (e) {
   console.error("Error cargando brain-data.json:", e);
 }
 
-// ─── Router inteligente: ROUTER.md define las rutas por palabras clave ────────
-const ROUTING_TABLE = [
+// ─── Tabla de Rutas oficial derivada de ROUTER.md ─────────────────────────────
+const ROUTER_MODULES = [
   {
-    // Directorio de contactos, locales, whatsapp, direcciones
-    keywords: ['whatsapp', 'contacto', 'teléfono', 'telefono', 'celular', 'directorio', 'dirección', 'direccion', 'correo', 'ubicación', 'ubicacion', 'franquicia', 'franquiciado', 'ciudad', 'quito', 'guayaquil', 'cuenca', 'ambato', 'locales'],
-    files: ['comercial/pdvs_directorio.md'],
+    name: 'Puntos de Venta (PDVs) y Contactos',
+    keywords: ['pdv', 'local', 'locales', 'directorio', 'contacto', 'contactos', 'whatsapp', 'telefono', 'teléfono', 'celular', 'franquicia', 'franquiciado', 'ciudad', 'quito', 'guayaquil', 'cuenca', 'ambato', 'direccion', 'dirección', 'correo'],
+    files: ['comercial/pdvs_directorio.md']
   },
   {
-    // Ventas acumuladas de productos
-    keywords: ['ventas producto', 'vendidos', 'ingresos producto', 'unidades', 'combos', 'pedidos ya', 'ranking producto', 'participación'],
-    files: ['ventas/ventas_productos_acumulado_2026.md'],
+    name: 'Márgenes y Rentabilidad',
+    keywords: ['margen', 'rentabilidad', 'utilidad', 'ganancia', 'cuánto deja', 'cuanto deja', 'rentable'],
+    files: ['finanzas/margenes_utilidad_productos.md']
   },
   {
-    // Ventas históricas de PDV / bodegas
-    keywords: ['ventas historicas', 'ventas históricas', 'histórico local', 'facturación local', 'ticket promedio', 'transacciones'],
-    files: ['ventas/ventas_por_pdv_historico.md'],
+    name: 'Fichas Técnicas de Costos y Recetas',
+    keywords: ['costo', 'costos', 'receta costo', 'ingrediente', 'gramaje', 'merma', 'pvp', 'materia prima'],
+    files: ['finanzas/fichas_tecnicas_costos_recetas.md']
   },
   {
-    // Márgenes y rentabilidad
-    keywords: ['margen', 'rentabilidad', 'utilidad', 'ganancia', 'cuánto deja', 'cuanto deja', 'producto más rentable', 'rentable'],
-    files: ['finanzas/margenes_utilidad_productos.md'],
+    name: 'Ventas Acumuladas de Productos 2026',
+    keywords: ['ventas producto', 'unidades vendidas', 'vendidos', 'ingresos producto', 'combos', 'pedidos ya', 'ranking producto'],
+    files: ['ventas/ventas_productos_acumulado_2026.md']
   },
   {
-    // Costos y fichas técnicas
-    keywords: ['costo', 'costos', 'receta costo', 'ingrediente', 'gramaje', 'merma', 'pvp', 'precio de venta', 'ficha técnica', 'materia prima'],
-    files: ['finanzas/fichas_tecnicas_costos_recetas.md'],
+    name: 'Ventas Históricas por PDV',
+    keywords: ['ventas historicas', 'ventas históricas', 'histórico local', 'facturación mensual', 'ticket promedio', 'transacciones pdv'],
+    files: ['ventas/ventas_por_pdv_historico.md']
   },
   {
-    // Menú y formatos
-    keywords: ['menú', 'menu', 'carta', 'precio', 'precios', 'waffle', 'helado', 'malteada', 'formato', 'pick up', 'express', 'premium'],
-    files: ['marketing/menus_por_formato.md'],
+    name: 'Menús y Precios',
+    keywords: ['menú', 'menu', 'carta', 'precio', 'precios', 'pick up', 'express', 'premium'],
+    files: ['marketing/menus_por_formato.md']
   },
   {
-    // Planta y mantenimiento
-    keywords: ['planta', 'selladora', 'envasadora', 'calibración', 'temperatura', 'maquinaria', 'mantenimiento', 'falla técnica'],
-    files: ['procesos/planta/calibracion_selladora.md'],
+    name: 'Recetas e Instructivos',
+    keywords: ['instructivo', 'mise en place', 'cortes', 'crocante', 'copa', 'postre', 'cafetería', 'masa', 'crepe', 'café', 'cafe', 'receta'],
+    files: ['procesos/recetas_instructivo.md', 'procesos/recetas_copas_crocantes.md', 'procesos/recetas_postres_cafeteria_otros.md']
   },
   {
-    // Recetas operativas
-    keywords: ['instructivo', 'mise en place', 'cortes', 'crocante', 'copa', 'postre', 'cafetería', 'masa', 'crepe', 'café', 'cafe'],
-    files: ['procesos/recetas_instructivo.md', 'procesos/recetas_copas_crocantes.md', 'procesos/recetas_postres_cafeteria_otros.md'],
+    name: 'Planta y Maquinaria',
+    keywords: ['planta', 'selladora', 'envasadora', 'calibración', 'temperatura', 'mantenimiento'],
+    files: ['procesos/planta/calibracion_selladora.md']
   },
   {
-    // Promociones y campañas
-    keywords: ['promoción', 'promocion', 'campaña', 'campana', '2x1', 'descuento', 'gift card', 'cupón', 'cupon', 'beneficio'],
-    files: ['marketing/promociones_campanas_pdv.md'],
+    name: 'Promociones y Campañas',
+    keywords: ['promoción', 'promocion', 'campaña', 'campana', '2x1', 'descuento', 'gift card', 'cupón', 'cupon'],
+    files: ['marketing/promociones_campanas_pdv.md']
   },
   {
-    // Auditoría
-    keywords: ['auditoría', 'auditoria', 'changelog', 'cambios', 'historial', 'quién subió', 'versiones', 'autor'],
-    files: ['auditoria/CHANGELOG.md'],
-  },
+    name: 'Auditoría',
+    keywords: ['auditoría', 'auditoria', 'changelog', 'cambios', 'historial'],
+    files: ['auditoria/CHANGELOG.md']
+  }
 ];
 
-const ALWAYS_INCLUDE_FILES = ['LEYES_SUPREMAS.md'];
-
 /**
- * Contexto COMPLETO para modelos con ventanas grandes (OpenRouter, Gemini)
+ * Construcción del contexto siguiendo la JERARQUÍA ESTRICTA del usuario:
+ * 1. ROUTER.md
+ * 2. LEYES_SUPREMAS.md
+ * 3. Archivo temático correspondiente según el Router
  */
-function buildSmartContext(message) {
-  const lowerMsg = message.toLowerCase();
+function buildContext(message, isCompact = false) {
+  const lower = message.toLowerCase();
+  const matchedTargetFiles = new Set();
 
-  const baseNodes = allNodes.filter(n =>
-    ALWAYS_INCLUDE_FILES.some(name => n.id.toLowerCase().includes(name.toLowerCase()))
-  );
-
-  const matchedFiles = new Set();
-  for (const route of ROUTING_TABLE) {
-    if (route.keywords.some(kw => lowerMsg.includes(kw))) {
-      route.files.forEach(f => matchedFiles.add(f.toLowerCase()));
+  for (const mod of ROUTER_MODULES) {
+    if (mod.keywords.some(kw => lower.includes(kw))) {
+      mod.files.forEach(f => matchedTargetFiles.add(f.toLowerCase()));
     }
   }
 
-  // Si no hubo match específico, buscar coincidencia parcial en nombre de archivo
+  // Filtrar los nodos temáticos encontrados
   const topicNodes = allNodes.filter(n =>
-    [...matchedFiles].some(f => n.id.toLowerCase().includes(f.split('/').pop().toLowerCase()))
+    matchedTargetFiles.has(n.id.toLowerCase())
   );
 
-  const selected = [...new Map([...baseNodes, ...topicNodes].map(n => [n.id, n])).values()];
-  return selected.map(n => `--- ARCHIVO: ${n.id} ---\n${n.content}`).join('\n\n');
-}
-
-/**
- * Contexto ULTRA-COMPACTO para Groq: filtra solo líneas o fragmentos relevantes
- * para NUNCA superar los 4,000 tokens y evitar el error 413.
- */
-function buildMiniContext(message) {
-  const lowerMsg = message.toLowerCase();
-  const words = lowerMsg.split(/\s+/).filter(w => w.length > 3);
-
-  const matchedFiles = new Set();
-  for (const route of ROUTING_TABLE) {
-    if (route.keywords.some(kw => lowerMsg.includes(kw))) {
-      route.files.forEach(f => matchedFiles.add(f.toLowerCase()));
+  if (isCompact) {
+    // Budget the entire context by UTF-8 bytes, not by number of lines.
+    // Keep source headers and adjacent lines so excerpts retain some context.
+    let compact = 'EXTRACTOS PARCIALES: no calcules totales ni rankings globales con estos fragmentos. Si falta información, indícalo.\n';
+    const words = lower.split(/\s+/).filter(w => w.length > 3);
+    const perFile = Math.floor(3200 / Math.max(1, topicNodes.length));
+    for (const node of topicNodes) {
+      const lines = node.content.split('\n');
+      const indexes = new Set(lines.slice(0, 6).map((_, i) => i));
+      lines.forEach((line, i) => {
+        if (words.some(word => line.toLowerCase().includes(word))) {
+          for (let j = Math.max(0, i - 1); j <= Math.min(lines.length - 1, i + 1); j++) indexes.add(j);
+        }
+      });
+      let excerpt = `\n=== ARCHIVO: ${node.id} ===\n`;
+      for (const i of [...indexes].sort((a, b) => a - b)) {
+        const candidate = excerpt + lines[i] + '\n';
+        if (Buffer.byteLength(candidate, 'utf8') <= perFile) excerpt = candidate;
+      }
+      compact += excerpt;
     }
+    return compact;
   }
 
-  const topicNodes = allNodes.filter(n =>
-    [...matchedFiles].some(f => n.id.toLowerCase().includes(f.split('/').pop().toLowerCase()))
-  );
-
-  let extractedContent = "";
+  let topicContent = "";
   if (topicNodes.length > 0) {
     for (const node of topicNodes) {
-      // Filtrar líneas del archivo que contengan palabras relevantes o tomar las primeras 50 líneas
-      const lines = node.content.split('\n');
-      const matchingLines = lines.filter(line => 
-        words.some(w => line.toLowerCase().includes(w))
-      );
-
-      if (matchingLines.length > 0) {
-        extractedContent += `--- ${node.id} (Líneas coincidentes) ---\n` + matchingLines.slice(0, 40).join('\n') + '\n\n';
+      if (isCompact) {
+        // Para Groq (limitar tamaño): filtrar líneas que coincidan con la búsqueda
+        const words = lower.split(/\s+/).filter(w => w.length > 3);
+        const lines = node.content.split('\n');
+        const matches = lines.filter(l => words.some(w => l.toLowerCase().includes(w)));
+        const sample = matches.length > 0 ? matches.slice(0, 45).join('\n') : lines.slice(0, 50).join('\n');
+        topicContent += `\n\n=== ARCHIVO TEMÁTICO: ${node.id} ===\n${sample}`;
       } else {
-        extractedContent += `--- ${node.id} ---\n` + lines.slice(0, 50).join('\n') + '\n\n';
+        // Para OpenRouter: incluir archivo temático completo
+        topicContent += `\n\n=== ARCHIVO TEMÁTICO: ${node.id} ===\n${node.content}`;
       }
     }
   }
 
-  // Máximo 3,000 caracteres para asegurar que Groq NUNCA de 413
-  return `IDENTIDAD: Eres Bogati Brain. Responde breve y conciso con los datos siguientes.
-Firma al final con [Fuente: archivo | Responsable: nombre | Actualizado: fecha].
+  return `=== 1. ÍNDICE MAESTRO (ROUTER.MD) ===
+${routerContent}
 
-${extractedContent.slice(0, 3500)}`;
+=== 2. DIRECTIVAS Y NORMAS (LEYES_SUPREMAS.MD) ===
+${leyesContent}
+${topicContent}`;
 }
 
-// ─── Modelos Gratuitos de OpenRouter (128k a 1M tokens, Cero 413, Cero Costo) ──
-const OPENROUTER_FREE_MODELS = [
-  "google/gemini-2.0-flash-exp:free",
-  "meta-llama/llama-3.3-70b-instruct:free",
-  "qwen/qwen-2.5-72b-instruct:free",
-  "deepseek/deepseek-r1:free",
-  "mistralai/mistral-small-24b-instruct-2501:free"
-];
+function buildSystemPrompt(context, message) {
+  return `Eres "Bogati Brain", la inteligencia central de Bogati Sabor Adictivo S.A.S.
+Sigue estrictamente el ROUTER y las LEYES SUPREMAS.
+Responde ÚNICAMENTE basándote en la base de conocimiento proporcionada abajo.
+Sé directo, claro y ejecutivo.
+Si el dato exacto no existe en los archivos, responde:
+"No tengo esa información en Bogati Brain. Pídele al encargado del área que la suba para que todos tengamos acceso a ella."
 
-// ─── Modelos Groq (14,400 peticiones diarias gratis con contexto mini) ────────
-const GROQ_MODELS = [
-  "openai/gpt-oss-120b",
-  "qwen/qwen3.8-27b",
-  "openai/gpt-oss-20b",
-  "allam-2-7b"
-];
-
-const MODEL_TIMEOUT = 12000;
-
-function buildPrompt(context, message) {
-  return `Eres "Bogati Brain", el cerebro central de Bogati Sabor Adictivo S.A.S.
-Responde ÚNICAMENTE basándote en la base de conocimiento. Sé directo y conciso.
-Si la información no está en los documentos, responde exactamente:
-"No tengo esa información en Bogati Brain. Pídele al encargado del área que la suba."
 Toda respuesta exitosa debe terminar con el pie de firma:
-[Fuente: <archivo> | Responsable: <nombre> | Actualizado: <fecha>]
+[Fuente: <ruta/archivo> | Responsable: <nombre y cargo> | Actualizado: <fecha>]
 
 --- BASE DE CONOCIMIENTO BOGATI ---
 ${context}
 --- FIN DE BASE DE CONOCIMIENTO ---
 
-Pregunta: ${message}
+Pregunta del ejecutivo: ${message}
 Respuesta:`;
 }
 
-async function tryOpenAICompatible(url, apiKey, model, prompt, extraHeaders = {}) {
+// ─── Modelos Gratuitos de OpenRouter probados y activos (262k a 1M tokens) ────
+const OPENROUTER_MODELS = [
+  "google/gemma-4-26b-a4b-it:free",
+  "nvidia/nemotron-3.5-lightning:free",
+  "liquid/lfm-2.5-2.6b:free",
+  "qwen/qwen3.8-27b:free"
+];
+
+// ─── Modelos Groq de respaldo (14,400 llamadas/día gratis) ───────────────────
+const GROQ_MODELS = [
+  "openai/gpt-oss-120b",
+  "qwen/qwen3.8-27b",
+  "openai/gpt-oss-20b"
+];
+
+async function callChatApi(url, apiKey, model, prompt, extraHeaders = {}) {
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 
-      'Content-Type': 'application/json', 
+    headers: {
+      'Content-Type': 'application/json',
       'Authorization': `Bearer ${apiKey}`,
       ...extraHeaders
     },
-    body: JSON.stringify({ 
-      model, 
-      messages: [{ role: 'user', content: prompt }], 
-      max_tokens: 1024, 
-      temperature: 0.2 
+    body: JSON.stringify({
+      model,
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 1200,
+      temperature: 0.2
     }),
-    signal: AbortSignal.timeout(MODEL_TIMEOUT),
+    signal: AbortSignal.timeout(15000)
   });
-  if (!res.ok) throw new Error(`${res.status}: ${(await res.text()).slice(0, 180)}`);
-  const json = await res.json();
-  return json.choices[0].message.content;
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`${res.status}: ${errorText.slice(0, 160)}`);
+  }
+
+  const data = await res.json();
+  const reply = data.choices?.[0]?.message?.content;
+  if (typeof reply !== 'string' || !reply.trim()) throw new Error('Respuesta vacía del proveedor');
+  return reply;
 }
 
-function saveLog(query, model, durationMs, text) {
+function logAudit(query, model, durationMs, text) {
   try {
     const dir = path.join(process.cwd(), '../auditoria');
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     fs.appendFileSync(
       path.join(dir, 'query_logs.jsonl'),
-      JSON.stringify({ timestamp: new Date().toISOString(), query, model, durationMs, replySnippet: text.slice(0, 150) }) + '\n'
+      JSON.stringify({
+        timestamp: new Date().toISOString(),
+        query,
+        model,
+        durationMs,
+        replySnippet: text.slice(0, 150)
+      }) + '\n'
     );
-  } catch (e) { console.error("Log error:", e); }
+  } catch (e) {
+    console.error("Audit log error:", e);
+  }
 }
 
 // ─── Handler Principal ────────────────────────────────────────────────────────
 export async function POST(req) {
   try {
     const { message } = await req.json();
+    if (typeof message !== 'string' || !message.trim() || Buffer.byteLength(message, 'utf8') > 1000) {
+      return NextResponse.json({ reply: 'Escribe una pregunta breve (máximo 1.000 bytes de texto).' }, { status: 400 });
+    }
     const startTime = Date.now();
     const errors = [];
 
-    const fullContext = buildSmartContext(message);
-    const fullPrompt  = buildPrompt(fullContext, message);
-    const miniContext = buildMiniContext(message);
-    const miniPrompt  = buildPrompt(miniContext, message);
-
     const openrouterKey = process.env.OPENROUTER_API_KEY;
-    const groqKey       = process.env.GROQ_API_KEY;
-    const geminiKey     = process.env.GEMINI_API_KEY;
-    const deepseekKey   = process.env.DEEPSEEK_API_KEY;
+    const groqKey = process.env.GROQ_API_KEY;
 
-    // 1️⃣ OPENROUTER (Si está configurado: 100% GRATIS con modelos :free, contexto gigante)
+    // 1️⃣ PRIMERA PRIORIDAD: OPENROUTER (100% GRATUITO, ventana de contexto gigante)
     if (openrouterKey) {
-      for (const m of OPENROUTER_FREE_MODELS) {
+      const fullContext = buildContext(message, false);
+      const fullPrompt = buildSystemPrompt(fullContext, message);
+
+      for (const model of OPENROUTER_MODELS) {
         try {
-          console.log(`[Brain] Probando OpenRouter gratis: ${m}`);
-          const text = await tryOpenAICompatible(
+          console.log(`[BogatiBrain] Intentando OpenRouter: ${model}`);
+          const text = await callChatApi(
             'https://openrouter.ai/api/v1/chat/completions',
             openrouterKey,
-            m,
+            model,
             fullPrompt,
-            { 'HTTP-Referer': 'https://bogati-brain.vercel.app', 'X-Title': 'Bogati Brain' }
+            {
+              'HTTP-Referer': 'https://bogati-brain.vercel.app',
+              'X-Title': 'Bogati Brain'
+            }
           );
-          saveLog(message, m, Date.now() - startTime, text);
-          return NextResponse.json({ reply: text, model: m });
-        } catch (e) {
-          errors.push(`OpenRouter ${m}: ${e.message}`);
-        }
-      }
-    }
-
-    // 2️⃣ GROQ (14,400 peticiones diarias gratis con contexto ultra-compacto filtrado)
-    if (groqKey) {
-      for (const m of GROQ_MODELS) {
-        try {
-          console.log(`[Brain] Probando Groq con contexto optimizado: ${m}`);
-          // Usamos miniPrompt para que NUNCA pase de 4000 tokens (evita error 413)
-          const text = await tryOpenAICompatible(
-            'https://api.groq.com/openai/v1/chat/completions',
-            groqKey,
-            m,
-            miniPrompt
-          );
-          saveLog(message, `groq/${m}`, Date.now() - startTime, text);
-          return NextResponse.json({ reply: text, model: `groq/${m}` });
-        } catch (e) {
-          errors.push(`Groq ${m}: ${e.message}`);
+          const duration = Date.now() - startTime;
+          logAudit(message, model, duration, text);
+          console.log(`[BogatiBrain] ✅ Respondió OpenRouter (${model}) en ${duration}ms`);
+          return NextResponse.json({ reply: text, model });
+        } catch (err) {
+          console.warn(`[BogatiBrain] OpenRouter ${model} falló:`, err.message);
+          errors.push(`OpenRouter ${model}: ${err.message}`);
         }
       }
     } else {
-      errors.push('GROQ_API_KEY no configurada');
+      errors.push("OPENROUTER_API_KEY no configurada");
     }
 
-    // 3️⃣ DEEPSEEK (Si tiene saldo)
-    if (deepseekKey) {
-      try {
-        const text = await tryOpenAICompatible(
-          'https://api.deepseek.com/v1/chat/completions',
-          deepseekKey,
-          'deepseek-chat',
-          fullPrompt
-        );
-        saveLog(message, 'deepseek-chat', Date.now() - startTime, text);
-        return NextResponse.json({ reply: text, model: 'deepseek-chat' });
-      } catch (e) {
-        errors.push(`DeepSeek: ${e.message}`);
+    // 2️⃣ SEGUNDA PRIORIDAD: GROQ (14,400 consultas/día gratis, contexto filtrado)
+    if (groqKey) {
+      const compactContext = buildContext(message, true);
+      const compactPrompt = buildSystemPrompt(compactContext, message);
+      if (Buffer.byteLength(compactPrompt, 'utf8') > 5600) {
+        return NextResponse.json({ reply: 'La consulta es demasiado extensa. Prueba con una pregunta más específica.' }, { status: 400 });
       }
-    }
 
-    // 4️⃣ GEMINI (Fallback si la cuota diaria de 20 peticiones ya se reinició)
-    if (geminiKey) {
-      try {
-        const genAI = new GoogleGenerativeAI(geminiKey);
-        const model = genAI.getGenerativeModel({ model: 'gemini-3.8-flash' });
-        const result = await model.generateContent(fullPrompt);
-        const text = result.response.text();
-        saveLog(message, 'gemini-3.8-flash', Date.now() - startTime, text);
-        return NextResponse.json({ reply: text, model: 'gemini-3.8-flash' });
-      } catch (e) {
-        errors.push(`Gemini: ${e.message}`);
+      for (const model of GROQ_MODELS) {
+        try {
+          console.log(`[BogatiBrain] Intentando Groq Backup: ${model}`);
+          const text = await callChatApi(
+            'https://api.groq.com/openai/v1/chat/completions',
+            groqKey,
+            model,
+            compactPrompt
+          );
+          const duration = Date.now() - startTime;
+          logAudit(message, `groq/${model}`, duration, text);
+          console.log(`[BogatiBrain] ✅ Respondió Groq (${model}) en ${duration}ms`);
+          return NextResponse.json({ reply: text, model: `groq/${model}` });
+        } catch (err) {
+          console.warn(`[BogatiBrain] Groq ${model} falló:`, err.message);
+          errors.push(`Groq ${model}: ${err.message}`);
+        }
       }
+    } else {
+      errors.push("GROQ_API_KEY no configurada");
     }
 
+    // 3️⃣ SI AMBOS FALLAN
+    console.error("[BogatiBrain] Fallaron todos los proveedores:", errors);
     return NextResponse.json({
-      reply: `⚠️ DEBUG - Errores:\n${errors.map((e, i) => `${i + 1}. ${e}`).join('\n')}`,
+      reply: 'No pude consultar la IA en este momento. Puede deberse a disponibilidad, límites de uso o configuración del servicio. Inténtalo más tarde; si continúa, pide al administrador que revise los registros de Vercel.'
     }, { status: 503 });
 
-  } catch (e) {
-    console.error("Error general:", e);
-    return NextResponse.json({ reply: 'Error interno del servidor.' }, { status: 500 });
+  } catch (error) {
+    console.error("Error general en chat:", error);
+    return NextResponse.json({ reply: "Error interno en el servidor." }, { status: 500 });
   }
 }

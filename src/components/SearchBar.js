@@ -12,7 +12,7 @@ export default function SearchBar() {
 
   const handleSearch = async (e) => {
     e.preventDefault();
-    if (!query.trim()) return;
+    if (!query.trim() || isLoading) return;
 
     setIsLoading(true);
     setIsOpen(true);
@@ -66,8 +66,7 @@ export default function SearchBar() {
               ) : (
                 <div 
                   className="text-lg leading-relaxed whitespace-pre-wrap font-medium"
-                  dangerouslySetInnerHTML={{ __html: result?.replace(/\n/g, '<br/>') || '' }}
-                />
+                >{result}</div>
               )}
             </div>
           </motion.div>
