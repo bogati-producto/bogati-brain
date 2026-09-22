@@ -5,6 +5,7 @@ import { resolveQuestion, parseRouter, NO_INFORMATION } from '../../../lib/brain
 import { providers, queryProviders, failureReply } from '../../../lib/chat-providers.mjs';
 import { plannerMessages, validatePlan } from '../../../lib/semantic-router.mjs';
 import { querySales, formatSales, SALES_INDEX, SALES_SOURCE } from '../../../lib/sales-query.mjs';
+import { queryProducts, formatProducts, PART_PREFIX, PRODUCT_INDEX } from '../../../lib/product-sales.mjs';
 
 // Seven 15-second attempts, with headroom for routing and response handling.
 export const maxDuration = 120;
@@ -20,9 +21,6 @@ export async function POST(req) {
   const started = Date.now();
   const requestId = randomUUID();
   try {
-    if (/\b(crepp?e|crepe|producto)\b/i.test(message) && /\b(latacunga|pdv|local|bodega)\b/i.test(message)) {
-      return NextResponse.json({ reply: 'La base actual sí tiene unidades de productos por mes, pero no las relaciona con cada PDV o ciudad. Por eso no puedo calcular cuántas creppes se vendieron en Latacunga. Necesitamos una fuente con columnas Producto, PDV/RUC, Año Mes y Unidades.', requestId });
-    }
     const planningMessages = plannerMessages(brainData.nodes, message);
     const planning = await queryProviders(planningMessages, providers(planningMessages).slice(0, 2), {
       validateReply: text => validatePlan(text, brainData.nodes),
@@ -32,6 +30,15 @@ export async function POST(req) {
     const plan = validatePlan(planning.reply, brainData.nodes);
     if (plan.clarification) return NextResponse.json({ reply: plan.clarification, requestId });
     if (!plan.file) return NextResponse.json({ reply: NO_INFORMATION, requestId });
+    if (plan.productSales) {
+      const parts = brainData.nodes.filter(node => node.id.startsWith(PART_PREFIX) && node.id.endsWith('.csv'));
+      if (!parts.length) throw new Error('No hay partes de productos cargadas');
+      const result = queryProducts(parts, plan.productSales);
+      const doc = brainData.nodes.find(node => node.id === PRODUCT_INDEX)?.content || '';
+      const channel = doc.match(/^Canal: (.+)$/m)?.[1];
+      const updated = doc.match(/^Actualizado: (.+)$/m)?.[1];
+      return NextResponse.json({ reply: formatProducts(result, { channel, updated, parts: parts.length }), requestId, model: planning.model });
+    }
     if (plan.sales) {
       const csv = brainData.nodes.find(n => n.id === SALES_SOURCE);
       if (!csv) throw new Error('Falta fuente CSV de ventas');
