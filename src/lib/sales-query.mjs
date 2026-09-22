@@ -37,19 +37,22 @@ export function querySales(content, filter) {
   const exact = stores.filter(r => clean(r.store) === phrase || r.ruc === filter.store);
   const matches = exact.length ? exact : stores.filter(r => phrase.split(' ').every(word => ` ${clean(r.store)} `.includes(` ${word} `)));
   if (!matches.length) return { clarification: `No encontré un local que coincida con «${filter.store}» en el archivo de ventas. Indica su nombre completo o RUC.` };
-  if (matches.length > 1) return { clarification: `Hay varios locales que coinciden. ¿Cuál necesitas? ${matches.slice(0, 12).map(r => `${r.store} (RUC ${r.ruc})`).join('; ')}${matches.length > 12 ? '; indica un nombre más específico.' : '.'}` };
-  const store = matches[0];
-  const selected = rows.filter(r => r.ruc === store.ruc && r.store === store.store && (!filter.from || r.month >= filter.from) && (!filter.to || r.month <= filter.to)).sort((a,b) => a.month.localeCompare(b.month));
-  if (!selected.length) return { clarification: `No hay registros de ${store.store} para el periodo solicitado. Eso no significa que sus ventas hayan sido cero.` };
-  const months = new Set(); const annual = new Map();
+  const aggregate = !exact.length && matches.length > 1 && matches.length <= 5 && phrase.split(' ').length <= 3;
+  if (matches.length > 1 && !aggregate) return { clarification: `Hay varios locales que coinciden. ¿Cuál necesitas? ${matches.slice(0, 12).map(r => `${r.store} (RUC ${r.ruc})`).join('; ')}${matches.length > 12 ? '; indica un nombre más específico.' : '.'}` };
+  const selectedStores = aggregate ? matches : [matches[0]];
+  const selected = rows.filter(r => selectedStores.some(store => r.ruc === store.ruc && r.store === store.store) && (!filter.from || r.month >= filter.from) && (!filter.to || r.month <= filter.to)).sort((a,b) => a.month.localeCompare(b.month));
+  if (!selected.length) return { clarification: `No hay registros de ${selectedStores.map(store => store.store).join(', ')} para el periodo solicitado. Eso no significa que sus ventas hayan sido cero.` };
+  const months = new Set(); const annual = new Map(); const monthly = new Map();
   let cents = 0, transactions = 0;
   for (const row of selected) {
-    if (months.has(row.month)) throw new Error('Hay registros duplicados del mismo local y mes; revisar antes de sumar');
-    months.add(row.month); cents += row.cents; transactions += row.transactions;
+    const key = `${row.ruc}|${row.month}`;
+    if (months.has(key)) throw new Error('Hay registros duplicados del mismo local y mes; revisar antes de sumar');
+    months.add(key); cents += row.cents; transactions += row.transactions;
     const year = row.month.slice(0,4); annual.set(year, (annual.get(year) || 0) + row.cents);
+    monthly.set(row.month, (monthly.get(row.month) || 0) + row.cents);
   }
-  return { store: store.store, ruc: store.ruc, cents, transactions, first: selected[0].month,
-    last: selected.at(-1).month, count: selected.length, annual: [...annual], rows: selected,
+  return { store: aggregate ? `PDV Latacunga (${selectedStores.length} locales)` : selectedStores[0].store, ruc: aggregate ? null : selectedStores[0].ruc, cents, transactions, first: selected[0].month,
+    last: selected.at(-1).month, count: selected.length, annual: [...annual], rows: [...monthly], stores: selectedStores.map(s => `${s.store} (RUC ${s.ruc})`),
     requestedFrom: filter.from, requestedTo: filter.to, groupBy: filter.groupBy };
 }
 
@@ -59,7 +62,7 @@ export function formatSales(result, route) {
   let reply = `${result.store} registró **${usd(result.cents)} en ventas**, sumando ${result.count} registros mensuales de ${result.first} a ${result.last}. Son ingresos por ventas, no utilidad.\n\n`;
   if (!result.requestedFrom && !result.requestedTo) reply += 'Como no indicaste un periodo, tomé todo el histórico disponible.\n\n';
   else reply += `Periodo solicitado: ${result.requestedFrom || 'inicio del histórico'} a ${result.requestedTo || 'último registro'}. El total incluye únicamente los meses registrados.\n\n`;
-  const detail = result.groupBy === 'month' ? result.rows.map(row => [row.month, row.cents]) : result.annual;
+  const detail = result.groupBy === 'month' ? result.rows.map(([month, value]) => [month, value]) : result.annual;
   reply += detail.map(([period, cents]) => `${period}: ${usd(cents)}`).join('\n');
   reply += `\n\nTransacciones: ${result.transactions.toLocaleString('es-EC')}.`;
   reply += `\n\n[Fuente: ${SALES_SOURCE} | Responsable: ${route.owner} | Actualizado: ${route.updated}]`;

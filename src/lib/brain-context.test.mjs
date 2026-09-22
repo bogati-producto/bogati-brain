@@ -82,6 +82,14 @@ test('Chillogallo totals reconcile to the independently prepared historical summ
   assert.equal(querySales(csv,{store:'Chillogallo',from:'2024-11',to:'2024-11'}).cents,540900);
   assert.equal(querySales(csv,{store:'Chillogallo',from:'2025-01',to:'2025-12'}).cents,8457400);
 });
+test('a city query aggregates its PDVs while a full store name stays specific', () => {
+  const city = querySales(csv, {store:'Latacunga',from:'2026-08',to:'2026-08',groupBy:'month'});
+  assert.equal(city.cents, 1167100);
+  assert.equal(city.stores.length, 3);
+  const specific = querySales(csv, {store:'Cotx Latacunga Sur Av. Quijano',from:'2026-02',to:'2026-02',groupBy:'month'});
+  assert.equal(specific.cents, 273100);
+  assert.equal(specific.stores.length, 1);
+});
 test('unknown and ambiguous stores and absent periods never become fabricated totals', () => {
   for (const filter of [{store:'Local inexistente',from:null,to:null},{store:'Quito',from:null,to:null},
     {store:'Chillogallo',from:'2030-01',to:'2030-12'}]) {

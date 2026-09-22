@@ -20,6 +20,9 @@ export async function POST(req) {
   const started = Date.now();
   const requestId = randomUUID();
   try {
+    if (/\b(crepp?e|crepe|producto)\b/i.test(message) && /\b(latacunga|pdv|local|bodega)\b/i.test(message)) {
+      return NextResponse.json({ reply: 'La base actual sí tiene unidades de productos por mes, pero no las relaciona con cada PDV o ciudad. Por eso no puedo calcular cuántas creppes se vendieron en Latacunga. Necesitamos una fuente con columnas Producto, PDV/RUC, Año Mes y Unidades.', requestId });
+    }
     const planningMessages = plannerMessages(brainData.nodes, message);
     const planning = await queryProviders(planningMessages, providers(planningMessages).slice(0, 2), {
       validateReply: text => validatePlan(text, brainData.nodes),
