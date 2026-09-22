@@ -14,67 +14,71 @@ try {
 }
 
 // ─── Router inteligente: ROUTER.md define las rutas por palabras clave ────────
-// Extraído del ROUTER.md de Bogati Brain
 const ROUTING_TABLE = [
   {
-    keywords: ['ventas', 'vendidos', 'ingresos', 'facturación', 'unidades', 'combos', 'pedidos', 'ranking productos', 'participación', 'acumulado'],
+    // Directorio de contactos, locales, whatsapp, direcciones
+    keywords: ['whatsapp', 'contacto', 'teléfono', 'telefono', 'celular', 'directorio', 'dirección', 'direccion', 'correo', 'ubicación', 'ubicacion', 'franquicia', 'franquiciado', 'ciudad', 'quito', 'guayaquil', 'cuenca', 'ambato', 'locales'],
+    files: ['comercial/pdvs_directorio.md'],
+  },
+  {
+    // Ventas acumuladas de productos
+    keywords: ['ventas producto', 'vendidos', 'ingresos producto', 'unidades', 'combos', 'pedidos ya', 'ranking producto', 'participación'],
     files: ['ventas/ventas_productos_acumulado_2026.md'],
   },
   {
-    keywords: ['pdv', 'local', 'bodega', 'bodeg', 'ticket', 'transacciones', 'ventas por local', 'ventas históricas', 'histórico', 'historico'],
+    // Ventas históricas de PDV / bodegas
+    keywords: ['ventas historicas', 'ventas históricas', 'histórico local', 'facturación local', 'ticket promedio', 'transacciones'],
     files: ['ventas/ventas_por_pdv_historico.md'],
   },
   {
+    // Márgenes y rentabilidad
     keywords: ['margen', 'rentabilidad', 'utilidad', 'ganancia', 'cuánto deja', 'cuanto deja', 'producto más rentable', 'rentable'],
     files: ['finanzas/margenes_utilidad_productos.md'],
   },
   {
-    keywords: ['costo', 'costos', 'receta', 'ingrediente', 'gramaje', 'merma', 'pvp', 'precio de venta', 'ficha técnica', 'materia prima'],
+    // Costos y fichas técnicas
+    keywords: ['costo', 'costos', 'receta costo', 'ingrediente', 'gramaje', 'merma', 'pvp', 'precio de venta', 'ficha técnica', 'materia prima'],
     files: ['finanzas/fichas_tecnicas_costos_recetas.md'],
   },
   {
-    keywords: ['franquicia', 'franquiciado', 'teléfono', 'directorio', 'contacto', 'dirección', 'correo', 'ciudad', 'zona', 'locales activos'],
-    files: ['comercial/pdvs_directorio.md'],
-  },
-  {
+    // Menú y formatos
     keywords: ['menú', 'menu', 'carta', 'precio', 'precios', 'waffle', 'helado', 'malteada', 'formato', 'pick up', 'express', 'premium'],
     files: ['marketing/menus_por_formato.md'],
   },
   {
+    // Planta y mantenimiento
     keywords: ['planta', 'selladora', 'envasadora', 'calibración', 'temperatura', 'maquinaria', 'mantenimiento', 'falla técnica'],
     files: ['procesos/planta/calibracion_selladora.md'],
   },
   {
+    // Recetas operativas
     keywords: ['instructivo', 'mise en place', 'cortes', 'crocante', 'copa', 'postre', 'cafetería', 'masa', 'crepe', 'café', 'cafe'],
     files: ['procesos/recetas_instructivo.md', 'procesos/recetas_copas_crocantes.md', 'procesos/recetas_postres_cafeteria_otros.md'],
   },
   {
+    // Promociones y campañas
     keywords: ['promoción', 'promocion', 'campaña', 'campana', '2x1', 'descuento', 'gift card', 'cupón', 'cupon', 'beneficio'],
     files: ['marketing/promociones_campanas_pdv.md'],
   },
   {
+    // Auditoría
     keywords: ['auditoría', 'auditoria', 'changelog', 'cambios', 'historial', 'quién subió', 'versiones', 'autor'],
     files: ['auditoria/CHANGELOG.md'],
   },
 ];
 
-// Archivos que SIEMPRE se incluyen (el índice y las leyes)
-const ALWAYS_INCLUDE = ['ROUTER.md', 'LEYES_SUPREMAS.md'];
+const ALWAYS_INCLUDE_FILES = ['LEYES_SUPREMAS.md'];
 
 /**
- * Selecciona el contexto relevante basándose en el mensaje del usuario.
- * Siempre incluye ROUTER + LEYES. Luego agrega solo los archivos temáticos
- * que coincidan con las palabras clave de la pregunta.
+ * Contexto COMPLETO para modelos con ventanas grandes (OpenRouter, Gemini)
  */
 function buildSmartContext(message) {
   const lowerMsg = message.toLowerCase();
 
-  // 1. Siempre incluir nodos base (ROUTER + LEYES)
   const baseNodes = allNodes.filter(n =>
-    ALWAYS_INCLUDE.some(name => n.id.toLowerCase().includes(name.toLowerCase()))
+    ALWAYS_INCLUDE_FILES.some(name => n.id.toLowerCase().includes(name.toLowerCase()))
   );
 
-  // 2. Detectar archivos relevantes según keywords del ROUTER
   const matchedFiles = new Set();
   for (const route of ROUTING_TABLE) {
     if (route.keywords.some(kw => lowerMsg.includes(kw))) {
@@ -82,27 +86,76 @@ function buildSmartContext(message) {
     }
   }
 
-  // 3. Cargar los nodos que coincidan con las rutas detectadas
+  // Si no hubo match específico, buscar coincidencia parcial en nombre de archivo
   const topicNodes = allNodes.filter(n =>
-    [...matchedFiles].some(f => n.id.toLowerCase().includes(f.split('/').pop()))
+    [...matchedFiles].some(f => n.id.toLowerCase().includes(f.split('/').pop().toLowerCase()))
   );
 
-  // 4. Si no detectamos tema específico, incluir solo ROUTER+LEYES
-  //    (la IA le dirá al usuario a qué módulo pertenece su pregunta)
-  const selected = [...baseNodes, ...topicNodes];
-  const uniqueSelected = [...new Map(selected.map(n => [n.id, n])).values()];
-
-  console.log(`[Brain] Contexto inteligente: [${uniqueSelected.map(n => n.id).join(', ')}]`);
-
-  return uniqueSelected
-    .map(n => `--- ARCHIVO: ${n.id} ---\n${n.content}`)
-    .join('\n\n');
+  const selected = [...new Map([...baseNodes, ...topicNodes].map(n => [n.id, n])).values()];
+  return selected.map(n => `--- ARCHIVO: ${n.id} ---\n${n.content}`).join('\n\n');
 }
 
-// ─── Modelos ──────────────────────────────────────────────────────────────────
-const GEMINI_MODELS = ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash'];
-const GROQ_MODELS   = ['openai/gpt-oss-120b', 'qwen/qwen3.8-27b', 'openai/gpt-oss-20b', 'allam-2-7b'];
-const MODEL_TIMEOUT = 10000;
+/**
+ * Contexto ULTRA-COMPACTO para Groq: filtra solo líneas o fragmentos relevantes
+ * para NUNCA superar los 4,000 tokens y evitar el error 413.
+ */
+function buildMiniContext(message) {
+  const lowerMsg = message.toLowerCase();
+  const words = lowerMsg.split(/\s+/).filter(w => w.length > 3);
+
+  const matchedFiles = new Set();
+  for (const route of ROUTING_TABLE) {
+    if (route.keywords.some(kw => lowerMsg.includes(kw))) {
+      route.files.forEach(f => matchedFiles.add(f.toLowerCase()));
+    }
+  }
+
+  const topicNodes = allNodes.filter(n =>
+    [...matchedFiles].some(f => n.id.toLowerCase().includes(f.split('/').pop().toLowerCase()))
+  );
+
+  let extractedContent = "";
+  if (topicNodes.length > 0) {
+    for (const node of topicNodes) {
+      // Filtrar líneas del archivo que contengan palabras relevantes o tomar las primeras 50 líneas
+      const lines = node.content.split('\n');
+      const matchingLines = lines.filter(line => 
+        words.some(w => line.toLowerCase().includes(w))
+      );
+
+      if (matchingLines.length > 0) {
+        extractedContent += `--- ${node.id} (Líneas coincidentes) ---\n` + matchingLines.slice(0, 40).join('\n') + '\n\n';
+      } else {
+        extractedContent += `--- ${node.id} ---\n` + lines.slice(0, 50).join('\n') + '\n\n';
+      }
+    }
+  }
+
+  // Máximo 3,000 caracteres para asegurar que Groq NUNCA de 413
+  return `IDENTIDAD: Eres Bogati Brain. Responde breve y conciso con los datos siguientes.
+Firma al final con [Fuente: archivo | Responsable: nombre | Actualizado: fecha].
+
+${extractedContent.slice(0, 3500)}`;
+}
+
+// ─── Modelos Gratuitos de OpenRouter (128k a 1M tokens, Cero 413, Cero Costo) ──
+const OPENROUTER_FREE_MODELS = [
+  "google/gemini-2.0-flash-exp:free",
+  "meta-llama/llama-3.3-70b-instruct:free",
+  "qwen/qwen-2.5-72b-instruct:free",
+  "deepseek/deepseek-r1:free",
+  "mistralai/mistral-small-24b-instruct-2501:free"
+];
+
+// ─── Modelos Groq (14,400 peticiones diarias gratis con contexto mini) ────────
+const GROQ_MODELS = [
+  "openai/gpt-oss-120b",
+  "qwen/qwen3.8-27b",
+  "openai/gpt-oss-20b",
+  "allam-2-7b"
+];
+
+const MODEL_TIMEOUT = 12000;
 
 function buildPrompt(context, message) {
   return `Eres "Bogati Brain", el cerebro central de Bogati Sabor Adictivo S.A.S.
@@ -120,25 +173,25 @@ Pregunta: ${message}
 Respuesta:`;
 }
 
-async function tryGemini(genAI, modelName, prompt) {
-  const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error(`Timeout ${MODEL_TIMEOUT}ms`)), MODEL_TIMEOUT));
-  const gen = (async () => {
-    const model = genAI.getGenerativeModel({ model: modelName });
-    const result = await model.generateContent(prompt);
-    return result.response.text();
-  })();
-  return Promise.race([gen, timeout]);
-}
-
-async function tryOpenAICompatible(url, apiKey, model, prompt) {
+async function tryOpenAICompatible(url, apiKey, model, prompt, extraHeaders = {}) {
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-    body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }], max_tokens: 1024, temperature: 0.3 }),
+    headers: { 
+      'Content-Type': 'application/json', 
+      'Authorization': `Bearer ${apiKey}`,
+      ...extraHeaders
+    },
+    body: JSON.stringify({ 
+      model, 
+      messages: [{ role: 'user', content: prompt }], 
+      max_tokens: 1024, 
+      temperature: 0.2 
+    }),
     signal: AbortSignal.timeout(MODEL_TIMEOUT),
   });
-  if (!res.ok) throw new Error(`${res.status}: ${(await res.text()).slice(0, 200)}`);
-  return (await res.json()).choices[0].message.content;
+  if (!res.ok) throw new Error(`${res.status}: ${(await res.text()).slice(0, 180)}`);
+  const json = await res.json();
+  return json.choices[0].message.content;
 }
 
 function saveLog(query, model, durationMs, text) {
@@ -152,65 +205,101 @@ function saveLog(query, model, durationMs, text) {
   } catch (e) { console.error("Log error:", e); }
 }
 
-// ─── Handler ──────────────────────────────────────────────────────────────────
+// ─── Handler Principal ────────────────────────────────────────────────────────
 export async function POST(req) {
   try {
     const { message } = await req.json();
     const startTime = Date.now();
     const errors = [];
 
-    // Construir contexto inteligente (solo archivos relevantes)
-    const smartContext = buildSmartContext(message);
-    const prompt = buildPrompt(smartContext, message);
+    const fullContext = buildSmartContext(message);
+    const fullPrompt  = buildPrompt(fullContext, message);
+    const miniContext = buildMiniContext(message);
+    const miniPrompt  = buildPrompt(miniContext, message);
 
-    const geminiKey   = process.env.GEMINI_API_KEY;
-    const deepseekKey = process.env.DEEPSEEK_API_KEY;
-    const groqKey     = process.env.GROQ_API_KEY;
+    const openrouterKey = process.env.OPENROUTER_API_KEY;
+    const groqKey       = process.env.GROQ_API_KEY;
+    const geminiKey     = process.env.GEMINI_API_KEY;
+    const deepseekKey   = process.env.DEEPSEEK_API_KEY;
 
-    // 1️⃣ Gemini (2 intentos con pausa)
-    if (geminiKey) {
-      const genAI = new GoogleGenerativeAI(geminiKey);
-      for (let i = 1; i <= 2; i++) {
-        if (i > 1) await new Promise(r => setTimeout(r, 2000));
-        for (const m of GEMINI_MODELS) {
-          try {
-            console.log(`[Brain] Gemini ${m} (intento ${i})`);
-            const text = await tryGemini(genAI, m, prompt);
-            saveLog(message, m, Date.now() - startTime, text);
-            return NextResponse.json({ reply: text, model: m });
-          } catch (e) { errors.push(`Gemini ${m} #${i}: ${e.message}`); }
+    // 1️⃣ OPENROUTER (Si está configurado: 100% GRATIS con modelos :free, contexto gigante)
+    if (openrouterKey) {
+      for (const m of OPENROUTER_FREE_MODELS) {
+        try {
+          console.log(`[Brain] Probando OpenRouter gratis: ${m}`);
+          const text = await tryOpenAICompatible(
+            'https://openrouter.ai/api/v1/chat/completions',
+            openrouterKey,
+            m,
+            fullPrompt,
+            { 'HTTP-Referer': 'https://bogati-brain.vercel.app', 'X-Title': 'Bogati Brain' }
+          );
+          saveLog(message, m, Date.now() - startTime, text);
+          return NextResponse.json({ reply: text, model: m });
+        } catch (e) {
+          errors.push(`OpenRouter ${m}: ${e.message}`);
         }
       }
     }
 
-    // 2️⃣ DeepSeek (contexto completo, ventana 64K)
-    if (deepseekKey) {
-      try {
-        console.log('[Brain] DeepSeek deepseek-chat...');
-        const text = await tryOpenAICompatible('https://api.deepseek.com/v1/chat/completions', deepseekKey, 'deepseek-chat', prompt);
-        saveLog(message, 'deepseek-chat', Date.now() - startTime, text);
-        return NextResponse.json({ reply: text, model: 'deepseek-chat' });
-      } catch (e) { errors.push(`DeepSeek: ${e.message}`); }
-    } else { errors.push('DEEPSEEK_API_KEY no configurada'); }
-
-    // 3️⃣ Groq (contexto ya es pequeño gracias al router inteligente)
+    // 2️⃣ GROQ (14,400 peticiones diarias gratis con contexto ultra-compacto filtrado)
     if (groqKey) {
       for (const m of GROQ_MODELS) {
         try {
-          console.log(`[Brain] Groq ${m}...`);
-          const text = await tryOpenAICompatible('https://api.groq.com/openai/v1/chat/completions', groqKey, m, prompt);
+          console.log(`[Brain] Probando Groq con contexto optimizado: ${m}`);
+          // Usamos miniPrompt para que NUNCA pase de 4000 tokens (evita error 413)
+          const text = await tryOpenAICompatible(
+            'https://api.groq.com/openai/v1/chat/completions',
+            groqKey,
+            m,
+            miniPrompt
+          );
           saveLog(message, `groq/${m}`, Date.now() - startTime, text);
           return NextResponse.json({ reply: text, model: `groq/${m}` });
-        } catch (e) { errors.push(`Groq ${m}: ${e.message}`); }
+        } catch (e) {
+          errors.push(`Groq ${m}: ${e.message}`);
+        }
+      }
+    } else {
+      errors.push('GROQ_API_KEY no configurada');
+    }
+
+    // 3️⃣ DEEPSEEK (Si tiene saldo)
+    if (deepseekKey) {
+      try {
+        const text = await tryOpenAICompatible(
+          'https://api.deepseek.com/v1/chat/completions',
+          deepseekKey,
+          'deepseek-chat',
+          fullPrompt
+        );
+        saveLog(message, 'deepseek-chat', Date.now() - startTime, text);
+        return NextResponse.json({ reply: text, model: 'deepseek-chat' });
+      } catch (e) {
+        errors.push(`DeepSeek: ${e.message}`);
+      }
+    }
+
+    // 4️⃣ GEMINI (Fallback si la cuota diaria de 20 peticiones ya se reinició)
+    if (geminiKey) {
+      try {
+        const genAI = new GoogleGenerativeAI(geminiKey);
+        const model = genAI.getGenerativeModel({ model: 'gemini-3.8-flash' });
+        const result = await model.generateContent(fullPrompt);
+        const text = result.response.text();
+        saveLog(message, 'gemini-3.8-flash', Date.now() - startTime, text);
+        return NextResponse.json({ reply: text, model: 'gemini-3.8-flash' });
+      } catch (e) {
+        errors.push(`Gemini: ${e.message}`);
       }
     }
 
     return NextResponse.json({
-      reply: `⚠️ DEBUG:\n${errors.map((e, i) => `${i + 1}. ${e}`).join('\n')}`,
+      reply: `⚠️ DEBUG - Errores:\n${errors.map((e, i) => `${i + 1}. ${e}`).join('\n')}`,
     }, { status: 503 });
 
   } catch (e) {
     console.error("Error general:", e);
-    return NextResponse.json({ reply: 'Error interno. Intenta de nuevo.' }, { status: 500 });
+    return NextResponse.json({ reply: 'Error interno del servidor.' }, { status: 500 });
   }
 }
