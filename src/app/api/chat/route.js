@@ -25,11 +25,12 @@ const GEMINI_MODELS = [
   "gemini-3.6-flash",
 ];
 
-// ─── Modelos Groq (fallback gratuito) ────────────────────────────────────────
+// ─── Modelos Groq disponibles (verificados con API, Sept 2026) ───────────────
 const GROQ_MODELS = [
-  "llama3-70b-8192",
-  "mixtral-8x7b-32768",
-  "llama3-8b-8192",
+  "openai/gpt-oss-120b",   // más potente disponible
+  "qwen/qwen3.8-27b",      // excelente en español
+  "openai/gpt-oss-20b",    // respaldo ligero
+  "allam-2-7b",            // último recurso
 ];
 
 const MODEL_TIMEOUT_MS = 8000;
