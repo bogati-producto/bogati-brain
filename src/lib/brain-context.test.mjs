@@ -111,3 +111,11 @@ test('invalid structured responses are retried rather than treated as answers',a
   }});
   assert.equal(calls,2);assert.ok(result.reply);
 });
+test('planner calendar dates normalize only when they cover complete months', () => {
+  const plan={file:'ventas/ventas_por_pdv_historico.md',sales:{store:'Chillogallo',from:'2024-11-01',to:'2024-11-30',groupBy:'month'},clarification:null};
+  const validated=validatePlan(JSON.stringify(plan),nodes);
+  assert.equal(validated.sales.from,'2024-11');assert.equal(validated.sales.to,'2024-11');
+  assert.equal(querySales(csv,validated.sales).cents,540900);
+  assert.ok(validatePlan(JSON.stringify({...plan,sales:{...plan.sales,from:'2024-11-05'}}),nodes).clarification);
+  assert.throws(()=>validatePlan(JSON.stringify({...plan,sales:{...plan.sales,to:'2024-11-31'}}),nodes));
+});

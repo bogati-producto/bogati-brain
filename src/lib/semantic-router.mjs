@@ -22,7 +22,22 @@ export function validatePlan(text, nodes) {
   if (plan.file !== null && !routes.some(r => r.files.includes(plan.file))) throw new Error('Archivo fuera del índice');
   if (plan.sales !== null) {
     const f = plan.sales;
+    if (!f || typeof f !== 'object') throw new Error('Filtro de ventas inválido');
     f.groupBy ??= 'year';
+    // Models may express a complete month as its first/last calendar day.
+    // Normalize only exact monthly boundaries; never expand a partial month.
+    for (const key of ['from', 'to']) {
+      if (typeof f[key] !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(f[key])) continue;
+      const [year, month, day] = f[key].split('-').map(Number);
+      const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+      if (month < 1 || month > 12 || day < 1 || day > lastDay) throw new Error('Fecha inválida');
+      if (day !== (key === 'from' ? 1 : lastDay)) {
+        plan.sales = null;
+        plan.clarification = 'El archivo tiene totales mensuales y no permite calcular ventas de días específicos. ¿Qué mes o meses completos quieres consultar?';
+        return plan;
+      }
+      f[key] = f[key].slice(0, 7);
+    }
     if (plan.file !== SALES_INDEX || !f || typeof f.store !== 'string' || f.store.length > 150 || !f.store.trim() ||
       ![null, 'month', 'year'].includes(f.groupBy) ||
       ![f.from, f.to].every(v => v === null || (typeof v === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(v))) ||
