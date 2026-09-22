@@ -3,209 +3,214 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import fs from 'fs';
 import path from 'path';
 
-// ─── Cargar base de conocimiento del Brain ────────────────────────────────────
-let brainContext = "";
+// ─── Cargar todos los nodos del Brain en memoria ──────────────────────────────
+let allNodes = [];
 try {
   const dataPath = path.join(process.cwd(), 'src/data/brain-data.json');
-  const fileContent = fs.readFileSync(dataPath, 'utf8');
-  const brainData = JSON.parse(fileContent);
-  brainContext = brainData.nodes
-    .filter(n => n.id !== 'BOGATI_BRAIN')
-    .map(n => `--- ARCHIVO: ${n.id} ---\n${n.content}`)
-    .join('\n\n');
-} catch (error) {
-  console.error("Error loading brain data:", error);
+  const raw = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
+  allNodes = raw.nodes.filter(n => n.id !== 'BOGATI_BRAIN');
+} catch (e) {
+  console.error("Error cargando brain-data.json:", e);
 }
 
-// Gemini soporta contextos grandes. Groq y DeepSeek tienen límites más pequeños.
-// Limitamos el contexto para proveedores con ventanas de contexto reducidas.
-const CONTEXT_FULL    = brainContext;                      // ~sin límite para Gemini
-const CONTEXT_SMALL   = brainContext.slice(0, 14000);      // ~3.5K tokens para Groq
-const CONTEXT_MEDIUM  = brainContext.slice(0, 40000);      // ~10K tokens para DeepSeek
-
-// ─── Modelos Gemini ───────────────────────────────────────────────────────────
-const GEMINI_MODELS = [
-  "gemini-3.8-flash",
-  "gemini-3.7-flash",
-  "gemini-3.6-flash",
+// ─── Router inteligente: ROUTER.md define las rutas por palabras clave ────────
+// Extraído del ROUTER.md de Bogati Brain
+const ROUTING_TABLE = [
+  {
+    keywords: ['ventas', 'vendidos', 'ingresos', 'facturación', 'unidades', 'combos', 'pedidos', 'ranking productos', 'participación', 'acumulado'],
+    files: ['ventas/ventas_productos_acumulado_2026.md'],
+  },
+  {
+    keywords: ['pdv', 'local', 'bodega', 'bodeg', 'ticket', 'transacciones', 'ventas por local', 'ventas históricas', 'histórico', 'historico'],
+    files: ['ventas/ventas_por_pdv_historico.md'],
+  },
+  {
+    keywords: ['margen', 'rentabilidad', 'utilidad', 'ganancia', 'cuánto deja', 'cuanto deja', 'producto más rentable', 'rentable'],
+    files: ['finanzas/margenes_utilidad_productos.md'],
+  },
+  {
+    keywords: ['costo', 'costos', 'receta', 'ingrediente', 'gramaje', 'merma', 'pvp', 'precio de venta', 'ficha técnica', 'materia prima'],
+    files: ['finanzas/fichas_tecnicas_costos_recetas.md'],
+  },
+  {
+    keywords: ['franquicia', 'franquiciado', 'teléfono', 'directorio', 'contacto', 'dirección', 'correo', 'ciudad', 'zona', 'locales activos'],
+    files: ['comercial/pdvs_directorio.md'],
+  },
+  {
+    keywords: ['menú', 'menu', 'carta', 'precio', 'precios', 'waffle', 'helado', 'malteada', 'formato', 'pick up', 'express', 'premium'],
+    files: ['marketing/menus_por_formato.md'],
+  },
+  {
+    keywords: ['planta', 'selladora', 'envasadora', 'calibración', 'temperatura', 'maquinaria', 'mantenimiento', 'falla técnica'],
+    files: ['procesos/planta/calibracion_selladora.md'],
+  },
+  {
+    keywords: ['instructivo', 'mise en place', 'cortes', 'crocante', 'copa', 'postre', 'cafetería', 'masa', 'crepe', 'café', 'cafe'],
+    files: ['procesos/recetas_instructivo.md', 'procesos/recetas_copas_crocantes.md', 'procesos/recetas_postres_cafeteria_otros.md'],
+  },
+  {
+    keywords: ['promoción', 'promocion', 'campaña', 'campana', '2x1', 'descuento', 'gift card', 'cupón', 'cupon', 'beneficio'],
+    files: ['marketing/promociones_campanas_pdv.md'],
+  },
+  {
+    keywords: ['auditoría', 'auditoria', 'changelog', 'cambios', 'historial', 'quién subió', 'versiones', 'autor'],
+    files: ['auditoria/CHANGELOG.md'],
+  },
 ];
 
-// ─── Modelos Groq disponibles (verificados Sept 2026) ────────────────────────
-const GROQ_MODELS = [
-  "openai/gpt-oss-120b",
-  "qwen/qwen3.8-27b",
-  "openai/gpt-oss-20b",
-  "allam-2-7b",
-];
+// Archivos que SIEMPRE se incluyen (el índice y las leyes)
+const ALWAYS_INCLUDE = ['ROUTER.md', 'LEYES_SUPREMAS.md'];
 
-const MODEL_TIMEOUT_MS = 10000;
+/**
+ * Selecciona el contexto relevante basándose en el mensaje del usuario.
+ * Siempre incluye ROUTER + LEYES. Luego agrega solo los archivos temáticos
+ * que coincidan con las palabras clave de la pregunta.
+ */
+function buildSmartContext(message) {
+  const lowerMsg = message.toLowerCase();
 
-// ─── Construir prompt con contexto variable ───────────────────────────────────
+  // 1. Siempre incluir nodos base (ROUTER + LEYES)
+  const baseNodes = allNodes.filter(n =>
+    ALWAYS_INCLUDE.some(name => n.id.toLowerCase().includes(name.toLowerCase()))
+  );
+
+  // 2. Detectar archivos relevantes según keywords del ROUTER
+  const matchedFiles = new Set();
+  for (const route of ROUTING_TABLE) {
+    if (route.keywords.some(kw => lowerMsg.includes(kw))) {
+      route.files.forEach(f => matchedFiles.add(f.toLowerCase()));
+    }
+  }
+
+  // 3. Cargar los nodos que coincidan con las rutas detectadas
+  const topicNodes = allNodes.filter(n =>
+    [...matchedFiles].some(f => n.id.toLowerCase().includes(f.split('/').pop()))
+  );
+
+  // 4. Si no detectamos tema específico, incluir solo ROUTER+LEYES
+  //    (la IA le dirá al usuario a qué módulo pertenece su pregunta)
+  const selected = [...baseNodes, ...topicNodes];
+  const uniqueSelected = [...new Map(selected.map(n => [n.id, n])).values()];
+
+  console.log(`[Brain] Contexto inteligente: [${uniqueSelected.map(n => n.id).join(', ')}]`);
+
+  return uniqueSelected
+    .map(n => `--- ARCHIVO: ${n.id} ---\n${n.content}`)
+    .join('\n\n');
+}
+
+// ─── Modelos ──────────────────────────────────────────────────────────────────
+const GEMINI_MODELS = ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash'];
+const GROQ_MODELS   = ['openai/gpt-oss-120b', 'qwen/qwen3.8-27b', 'openai/gpt-oss-20b', 'allam-2-7b'];
+const MODEL_TIMEOUT = 10000;
+
 function buildPrompt(context, message) {
-  return `Eres el "Bogati Brain", la inteligencia central de Bogati Sabor Adictivo S.A.S.
-Tu objetivo es responder a las preguntas de los ejecutivos basándote ÚNICAMENTE en la siguiente base de conocimiento.
-Sé directo, claro y conciso. Si la información no está en la base de conocimiento, dilo educadamente.
+  return `Eres "Bogati Brain", el cerebro central de Bogati Sabor Adictivo S.A.S.
+Responde ÚNICAMENTE basándote en la base de conocimiento. Sé directo y conciso.
+Si la información no está en los documentos, responde exactamente:
+"No tengo esa información en Bogati Brain. Pídele al encargado del área que la suba."
+Toda respuesta exitosa debe terminar con el pie de firma:
+[Fuente: <archivo> | Responsable: <nombre> | Actualizado: <fecha>]
 
---- INICIO DE LA BASE DE CONOCIMIENTO BOGATI ---
+--- BASE DE CONOCIMIENTO BOGATI ---
 ${context}
---- FIN DE LA BASE DE CONOCIMIENTO ---
+--- FIN DE BASE DE CONOCIMIENTO ---
 
-Pregunta del usuario: ${message}
+Pregunta: ${message}
 Respuesta:`;
 }
 
-// ─── Intentar un modelo Gemini con timeout ────────────────────────────────────
-async function tryGeminiModel(genAI, modelName, prompt) {
-  const timeout = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error(`Timeout ${MODEL_TIMEOUT_MS}ms`)), MODEL_TIMEOUT_MS)
-  );
-  const generate = (async () => {
+async function tryGemini(genAI, modelName, prompt) {
+  const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error(`Timeout ${MODEL_TIMEOUT}ms`)), MODEL_TIMEOUT));
+  const gen = (async () => {
     const model = genAI.getGenerativeModel({ model: modelName });
     const result = await model.generateContent(prompt);
     return result.response.text();
   })();
-  return Promise.race([generate, timeout]);
+  return Promise.race([gen, timeout]);
 }
 
-// ─── Llamar a una API compatible con OpenAI (Groq / DeepSeek) ────────────────
-async function tryOpenAICompatible(apiUrl, apiKey, modelName, prompt) {
-  const response = await fetch(apiUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: modelName,
-      messages: [{ role: "user", content: prompt }],
-      max_tokens: 1024,
-      temperature: 0.3,
-    }),
-    signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
+async function tryOpenAICompatible(url, apiKey, model, prompt) {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+    body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }], max_tokens: 1024, temperature: 0.3 }),
+    signal: AbortSignal.timeout(MODEL_TIMEOUT),
   });
-
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`${response.status}: ${err.slice(0, 200)}`);
-  }
-
-  const data = await response.json();
-  return data.choices[0].message.content;
+  if (!res.ok) throw new Error(`${res.status}: ${(await res.text()).slice(0, 200)}`);
+  return (await res.json()).choices[0].message.content;
 }
 
-// ─── Guardar log de auditoría ─────────────────────────────────────────────────
 function saveLog(query, model, durationMs, text) {
   try {
-    const logDir = path.join(process.cwd(), '../auditoria');
-    if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
-    const entry = {
-      timestamp: new Date().toISOString(),
-      query, model, durationMs,
-      replySnippet: text.slice(0, 150) + (text.length > 150 ? '...' : ''),
-    };
-    fs.appendFileSync(path.join(logDir, 'query_logs.jsonl'), JSON.stringify(entry) + '\n', 'utf8');
-  } catch (e) {
-    console.error("Error guardando log:", e);
-  }
+    const dir = path.join(process.cwd(), '../auditoria');
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.appendFileSync(
+      path.join(dir, 'query_logs.jsonl'),
+      JSON.stringify({ timestamp: new Date().toISOString(), query, model, durationMs, replySnippet: text.slice(0, 150) }) + '\n'
+    );
+  } catch (e) { console.error("Log error:", e); }
 }
 
-// ─── Handler principal ────────────────────────────────────────────────────────
+// ─── Handler ──────────────────────────────────────────────────────────────────
 export async function POST(req) {
   try {
     const { message } = await req.json();
     const startTime = Date.now();
     const errors = [];
 
-    const geminiKey  = process.env.GEMINI_API_KEY;
-    const groqKey    = process.env.GROQ_API_KEY;
-    const deepseekKey = process.env.DEEPSEEK_API_KEY;
+    // Construir contexto inteligente (solo archivos relevantes)
+    const smartContext = buildSmartContext(message);
+    const prompt = buildPrompt(smartContext, message);
 
-    // ── 1️⃣ Gemini (contexto completo, 2 reintentos) ──────────────────────────
+    const geminiKey   = process.env.GEMINI_API_KEY;
+    const deepseekKey = process.env.DEEPSEEK_API_KEY;
+    const groqKey     = process.env.GROQ_API_KEY;
+
+    // 1️⃣ Gemini (2 intentos con pausa)
     if (geminiKey) {
       const genAI = new GoogleGenerativeAI(geminiKey);
-      const prompt = buildPrompt(CONTEXT_FULL, message);
-
-      for (let intento = 1; intento <= 2; intento++) {
-        if (intento > 1) {
-          await new Promise(r => setTimeout(r, 2000));
-        }
-        for (const modelName of GEMINI_MODELS) {
+      for (let i = 1; i <= 2; i++) {
+        if (i > 1) await new Promise(r => setTimeout(r, 2000));
+        for (const m of GEMINI_MODELS) {
           try {
-            console.log(`[Brain] Gemini ${modelName} (intento ${intento})`);
-            const text = await tryGeminiModel(genAI, modelName, prompt);
-            const durationMs = Date.now() - startTime;
-            saveLog(message, modelName, durationMs, text);
-            console.log(`[Brain] ✅ ${modelName} OK en ${durationMs}ms`);
-            return NextResponse.json({ reply: text, model: modelName });
-          } catch (err) {
-            const msg = `Gemini ${modelName} (intento ${intento}): ${err.message}`;
-            errors.push(msg);
-            console.warn(`[Brain] ❌ ${msg}`);
-          }
+            console.log(`[Brain] Gemini ${m} (intento ${i})`);
+            const text = await tryGemini(genAI, m, prompt);
+            saveLog(message, m, Date.now() - startTime, text);
+            return NextResponse.json({ reply: text, model: m });
+          } catch (e) { errors.push(`Gemini ${m} #${i}: ${e.message}`); }
         }
       }
-    } else {
-      errors.push("GEMINI_API_KEY no configurada");
     }
 
-    // ── 2️⃣ DeepSeek (contexto medio, 64K ventana) ───────────────────────────
+    // 2️⃣ DeepSeek (contexto completo, ventana 64K)
     if (deepseekKey) {
-      const prompt = buildPrompt(CONTEXT_MEDIUM, message);
       try {
-        console.log("[Brain] DeepSeek deepseek-chat...");
-        const text = await tryOpenAICompatible(
-          "https://api.deepseek.com/v1/chat/completions",
-          deepseekKey,
-          "deepseek-chat",
-          prompt
-        );
-        const durationMs = Date.now() - startTime;
-        saveLog(message, "deepseek-chat", durationMs, text);
-        console.log(`[Brain] ✅ DeepSeek OK en ${durationMs}ms`);
-        return NextResponse.json({ reply: text, model: "deepseek-chat" });
-      } catch (err) {
-        const msg = `DeepSeek: ${err.message}`;
-        errors.push(msg);
-        console.warn(`[Brain] ❌ ${msg}`);
-      }
-    } else {
-      errors.push("DEEPSEEK_API_KEY no configurada en Vercel");
-    }
+        console.log('[Brain] DeepSeek deepseek-chat...');
+        const text = await tryOpenAICompatible('https://api.deepseek.com/v1/chat/completions', deepseekKey, 'deepseek-chat', prompt);
+        saveLog(message, 'deepseek-chat', Date.now() - startTime, text);
+        return NextResponse.json({ reply: text, model: 'deepseek-chat' });
+      } catch (e) { errors.push(`DeepSeek: ${e.message}`); }
+    } else { errors.push('DEEPSEEK_API_KEY no configurada'); }
 
-    // ── 3️⃣ Groq (contexto reducido para no exceder límite) ───────────────────
+    // 3️⃣ Groq (contexto ya es pequeño gracias al router inteligente)
     if (groqKey) {
-      const prompt = buildPrompt(CONTEXT_SMALL, message);
-      for (const modelName of GROQ_MODELS) {
+      for (const m of GROQ_MODELS) {
         try {
-          console.log(`[Brain] Groq ${modelName}...`);
-          const text = await tryOpenAICompatible(
-            "https://api.groq.com/openai/v1/chat/completions",
-            groqKey,
-            modelName,
-            prompt
-          );
-          const durationMs = Date.now() - startTime;
-          saveLog(message, `groq/${modelName}`, durationMs, text);
-          console.log(`[Brain] ✅ Groq ${modelName} OK en ${durationMs}ms`);
-          return NextResponse.json({ reply: text, model: `groq/${modelName}` });
-        } catch (err) {
-          const msg = `Groq ${modelName}: ${err.message}`;
-          errors.push(msg);
-          console.warn(`[Brain] ❌ ${msg}`);
-        }
+          console.log(`[Brain] Groq ${m}...`);
+          const text = await tryOpenAICompatible('https://api.groq.com/openai/v1/chat/completions', groqKey, m, prompt);
+          saveLog(message, `groq/${m}`, Date.now() - startTime, text);
+          return NextResponse.json({ reply: text, model: `groq/${m}` });
+        } catch (e) { errors.push(`Groq ${m}: ${e.message}`); }
       }
-    } else {
-      errors.push("GROQ_API_KEY no configurada en Vercel");
     }
 
-    // ── 4️⃣ Todo falló ────────────────────────────────────────────────────────
-    console.error("[Brain] Todos los proveedores fallaron:", errors);
     return NextResponse.json({
-      reply: `⚠️ DEBUG - Errores:\n${errors.map((e, i) => `${i + 1}. ${e}`).join('\n')}`,
+      reply: `⚠️ DEBUG:\n${errors.map((e, i) => `${i + 1}. ${e}`).join('\n')}`,
     }, { status: 503 });
 
-  } catch (error) {
-    console.error("Error general en /api/chat:", error);
-    return NextResponse.json({ reply: "Error interno. Intenta de nuevo." }, { status: 500 });
+  } catch (e) {
+    console.error("Error general:", e);
+    return NextResponse.json({ reply: 'Error interno. Intenta de nuevo.' }, { status: 500 });
   }
 }
