@@ -3,13 +3,12 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import fs from 'fs';
 import path from 'path';
 
-// Load brain data for context
+// ─── Cargar base de conocimiento del Brain ────────────────────────────────────
 let brainContext = "";
 try {
   const dataPath = path.join(process.cwd(), 'src/data/brain-data.json');
   const fileContent = fs.readFileSync(dataPath, 'utf8');
   const brainData = JSON.parse(fileContent);
-  
   brainContext = brainData.nodes
     .filter(n => n.id !== 'BOGATI_BRAIN')
     .map(n => `--- ARCHIVO: ${n.id} ---\n${n.content}`)
@@ -18,58 +17,86 @@ try {
   console.error("Error loading brain data:", error);
 }
 
-// Modelos ordenados de mayor a menor calidad.
-// Se prueban en secuencia: si uno falla (503, 404, etc.) se pasa al siguiente
-// de forma inmediata. Solo pagamos por el modelo que responde exitosamente.
-const CANDIDATE_MODELS = [
-  "gemini-2.5-flash",       // tier alto, muy capaz
-  "gemini-2.5-flash-lite",  // versión ligera, más disponible
-  "gemini-2.0-flash",       // modelo estable y probado
-  "gemini-2.0-flash-lite",  // versión ligera de 2.0
-  "gemini-1.5-flash",       // fallback clásico
-  "gemini-1.5-flash-8b",    // el más ligero — casi siempre disponible
+// ─── Modelos Gemini (de mayor a menor calidad) ────────────────────────────────
+const GEMINI_MODELS = [
+  "gemini-3.8-flash",
+  "gemini-3.7-flash",
+  "gemini-2.5-flash",
 ];
 
-// Timeout en ms para que un modelo no nos haga esperar demasiado.
-// Si un modelo no responde en este tiempo, se considera error y pasamos al siguiente.
 const MODEL_TIMEOUT_MS = 8000;
 
-/**
- * Intenta llamar a un modelo Gemini específico con timeout.
- * Retorna el texto de la respuesta, o lanza un error si falla.
- */
-async function tryModel(genAI, modelName, prompt) {
-  const timeoutPromise = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error(`Timeout después de ${MODEL_TIMEOUT_MS}ms`)), MODEL_TIMEOUT_MS)
+// ─── Intentar un modelo Gemini con timeout ────────────────────────────────────
+async function tryGeminiModel(genAI, modelName, prompt) {
+  const timeout = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error(`Timeout: ${MODEL_TIMEOUT_MS}ms`)), MODEL_TIMEOUT_MS)
   );
-
-  const generatePromise = (async () => {
+  const generate = (async () => {
     const model = genAI.getGenerativeModel({ model: modelName });
     const result = await model.generateContent(prompt);
-    const response = await result.response;
-    return response.text();
+    return result.response.text();
   })();
-
-  return Promise.race([generatePromise, timeoutPromise]);
+  return Promise.race([generate, timeout]);
 }
 
+// ─── Fallback: Groq con Llama 4 (gratis, servidores USA) ─────────────────────
+async function tryGroq(prompt) {
+  const groqKey = process.env.GROQ_API_KEY;
+  if (!groqKey) throw new Error("GROQ_API_KEY no configurada");
+
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${groqKey}`,
+    },
+    body: JSON.stringify({
+      model: "meta-llama/llama-4-scout-17b-16e-instruct",
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: 1024,
+      temperature: 0.3,
+    }),
+    signal: AbortSignal.timeout(10000),
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Groq error ${response.status}: ${err}`);
+  }
+
+  const data = await response.json();
+  return data.choices[0].message.content;
+}
+
+// ─── Guardar log de auditoría ─────────────────────────────────────────────────
+function saveLog(query, model, durationMs, text) {
+  try {
+    const logDir = path.join(process.cwd(), '../auditoria');
+    if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
+    const entry = {
+      timestamp: new Date().toISOString(),
+      query,
+      model,
+      durationMs,
+      replySnippet: text.slice(0, 150) + (text.length > 150 ? '...' : ''),
+    };
+    fs.appendFileSync(path.join(logDir, 'query_logs.jsonl'), JSON.stringify(entry) + '\n', 'utf8');
+  } catch (e) {
+    console.error("Error guardando log:", e);
+  }
+}
+
+// ─── Handler principal ────────────────────────────────────────────────────────
 export async function POST(req) {
   try {
     const { message } = await req.json();
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json(
-        { reply: "Error: No se encontró la API Key de Gemini en el entorno." },
-        { status: 500 }
-      );
-    }
+    const geminiKey = process.env.GEMINI_API_KEY;
+    const startTime = Date.now();
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-
-    const prompt = `Eres el "Bogati Brain", la inteligencia central de la empresa Bogati Sabor Adictivo S.A.S.
+    const prompt = `Eres el "Bogati Brain", la inteligencia central de Bogati Sabor Adictivo S.A.S.
 Tu objetivo es responder a las preguntas de los ejecutivos basándote ÚNICAMENTE en la siguiente base de conocimiento.
-Sé directo, claro y conciso. Si te preguntan algo que no está en la base de conocimiento, responde educadamente que no tienes esa información en el sistema.
+Sé directo, claro y conciso. Si la información no está en la base de conocimiento, responde educadamente que no tienes esa información en el sistema.
 
 --- INICIO DE LA BASE DE CONOCIMIENTO BOGATI ---
 ${brainContext}
@@ -78,65 +105,42 @@ ${brainContext}
 Pregunta del usuario: ${message}
 Respuesta:`;
 
-    const startTime = Date.now();
-    let lastError = null;
-    let usedModel = null;
-
-    // Secuencial con timeout: prueba modelos uno a uno hasta que uno funcione.
-    // Si el error es inmediato (503, 404), pasa al siguiente sin esperar el timeout.
-    for (const modelName of CANDIDATE_MODELS) {
-      try {
-        console.log(`[BogatiBrain] Intentando modelo: ${modelName}`);
-        const text = await tryModel(genAI, modelName, prompt);
-        usedModel = modelName;
-        const durationMs = Date.now() - startTime;
-
-        // Registrar log de auditoría
+    // 1️⃣ Intentar modelos Gemini en secuencia
+    if (geminiKey) {
+      const genAI = new GoogleGenerativeAI(geminiKey);
+      for (const modelName of GEMINI_MODELS) {
         try {
-          const logDir = path.join(process.cwd(), '../auditoria');
-          if (!fs.existsSync(logDir)) {
-            fs.mkdirSync(logDir, { recursive: true });
-          }
-          const logEntry = {
-            timestamp: new Date().toISOString(),
-            query: message,
-            model: usedModel,
-            durationMs,
-            replySnippet: text.slice(0, 150) + (text.length > 150 ? '...' : '')
-          };
-          fs.appendFileSync(
-            path.join(logDir, 'query_logs.jsonl'),
-            JSON.stringify(logEntry) + '\n',
-            'utf8'
-          );
-        } catch (logErr) {
-          console.error("Error guardando log de auditoría:", logErr);
-        }
-
-        return NextResponse.json({ reply: text, model: usedModel });
-
-      } catch (err) {
-        lastError = err;
-        console.warn(`[BogatiBrain] Falló ${modelName}: ${err.message} — pasando al siguiente...`);
-        // Si es error de red/timeout, esperamos 200ms antes del siguiente intento
-        // Si es error de API (4xx/5xx), pasamos inmediatamente
-        const isApiError = err.message?.includes('404') || err.message?.includes('503') || err.message?.includes('400');
-        if (!isApiError) {
-          await new Promise(r => setTimeout(r, 200));
+          console.log(`[BogatiBrain] Intentando Gemini: ${modelName}`);
+          const text = await tryGeminiModel(genAI, modelName, prompt);
+          const durationMs = Date.now() - startTime;
+          saveLog(message, modelName, durationMs, text);
+          return NextResponse.json({ reply: text, model: modelName });
+        } catch (err) {
+          console.warn(`[BogatiBrain] Falló ${modelName}: ${err.message}`);
         }
       }
     }
 
-    // Si llegamos aquí, TODOS los modelos fallaron
-    console.error("[BogatiBrain] Todos los modelos fallaron.", lastError?.message);
+    // 2️⃣ Fallback a Groq (Llama 4) si todos los Gemini fallaron
+    try {
+      console.log("[BogatiBrain] Todos Gemini fallaron → intentando Groq Llama 4...");
+      const text = await tryGroq(prompt);
+      const durationMs = Date.now() - startTime;
+      saveLog(message, "groq/llama-4-scout", durationMs, text);
+      return NextResponse.json({ reply: text, model: "groq/llama-4-scout" });
+    } catch (groqErr) {
+      console.error("[BogatiBrain] Groq también falló:", groqErr.message);
+    }
+
+    // 3️⃣ Si todo falló
     return NextResponse.json({
-      reply: "⚠️ Todos los modelos de IA están momentáneamente ocupados. Por favor intenta de nuevo en unos segundos. (El sistema probó 6 modelos diferentes automáticamente)"
+      reply: "⚠️ Los servicios de IA están momentáneamente saturados. Por favor intenta de nuevo en unos segundos.",
     }, { status: 503 });
 
   } catch (error) {
     console.error("Error general en /api/chat:", error);
     return NextResponse.json({
-      reply: "Error interno del servidor. Por favor intenta de nuevo."
+      reply: "Error interno del servidor. Por favor intenta de nuevo.",
     }, { status: 500 });
   }
 }
