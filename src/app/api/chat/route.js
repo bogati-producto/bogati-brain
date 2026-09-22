@@ -17,28 +17,47 @@ try {
   console.error("Error loading brain data:", error);
 }
 
-// ─── Modelos Gemini actualizados y disponibles ────────────────────────────────
-// gemini-3.6-flash es el recomendado por Google como reemplazo de 2.5-flash
+// Gemini soporta contextos grandes. Groq y DeepSeek tienen límites más pequeños.
+// Limitamos el contexto para proveedores con ventanas de contexto reducidas.
+const CONTEXT_FULL    = brainContext;                      // ~sin límite para Gemini
+const CONTEXT_SMALL   = brainContext.slice(0, 14000);      // ~3.5K tokens para Groq
+const CONTEXT_MEDIUM  = brainContext.slice(0, 40000);      // ~10K tokens para DeepSeek
+
+// ─── Modelos Gemini ───────────────────────────────────────────────────────────
 const GEMINI_MODELS = [
   "gemini-3.8-flash",
   "gemini-3.7-flash",
   "gemini-3.6-flash",
 ];
 
-// ─── Modelos Groq disponibles (verificados con API, Sept 2026) ───────────────
+// ─── Modelos Groq disponibles (verificados Sept 2026) ────────────────────────
 const GROQ_MODELS = [
-  "openai/gpt-oss-120b",   // más potente disponible
-  "qwen/qwen3.8-27b",      // excelente en español
-  "openai/gpt-oss-20b",    // respaldo ligero
-  "allam-2-7b",            // último recurso
+  "openai/gpt-oss-120b",
+  "qwen/qwen3.8-27b",
+  "openai/gpt-oss-20b",
+  "allam-2-7b",
 ];
 
-const MODEL_TIMEOUT_MS = 8000;
+const MODEL_TIMEOUT_MS = 10000;
+
+// ─── Construir prompt con contexto variable ───────────────────────────────────
+function buildPrompt(context, message) {
+  return `Eres el "Bogati Brain", la inteligencia central de Bogati Sabor Adictivo S.A.S.
+Tu objetivo es responder a las preguntas de los ejecutivos basándote ÚNICAMENTE en la siguiente base de conocimiento.
+Sé directo, claro y conciso. Si la información no está en la base de conocimiento, dilo educadamente.
+
+--- INICIO DE LA BASE DE CONOCIMIENTO BOGATI ---
+${context}
+--- FIN DE LA BASE DE CONOCIMIENTO ---
+
+Pregunta del usuario: ${message}
+Respuesta:`;
+}
 
 // ─── Intentar un modelo Gemini con timeout ────────────────────────────────────
 async function tryGeminiModel(genAI, modelName, prompt) {
   const timeout = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error(`Timeout después de ${MODEL_TIMEOUT_MS}ms`)), MODEL_TIMEOUT_MS)
+    setTimeout(() => reject(new Error(`Timeout ${MODEL_TIMEOUT_MS}ms`)), MODEL_TIMEOUT_MS)
   );
   const generate = (async () => {
     const model = genAI.getGenerativeModel({ model: modelName });
@@ -48,13 +67,13 @@ async function tryGeminiModel(genAI, modelName, prompt) {
   return Promise.race([generate, timeout]);
 }
 
-// ─── Intentar un modelo Groq ─────────────────────────────────────────────────
-async function tryGroqModel(groqKey, modelName, prompt) {
-  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+// ─── Llamar a una API compatible con OpenAI (Groq / DeepSeek) ────────────────
+async function tryOpenAICompatible(apiUrl, apiKey, modelName, prompt) {
+  const response = await fetch(apiUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${groqKey}`,
+      "Authorization": `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
       model: modelName,
@@ -62,12 +81,12 @@ async function tryGroqModel(groqKey, modelName, prompt) {
       max_tokens: 1024,
       temperature: 0.3,
     }),
-    signal: AbortSignal.timeout(10000),
+    signal: AbortSignal.timeout(MODEL_TIMEOUT_MS),
   });
 
   if (!response.ok) {
     const err = await response.text();
-    throw new Error(`${response.status}: ${err}`);
+    throw new Error(`${response.status}: ${err.slice(0, 200)}`);
   }
 
   const data = await response.json();
@@ -81,9 +100,7 @@ function saveLog(query, model, durationMs, text) {
     if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
     const entry = {
       timestamp: new Date().toISOString(),
-      query,
-      model,
-      durationMs,
+      query, model, durationMs,
       replySnippet: text.slice(0, 150) + (text.length > 150 ? '...' : ''),
     };
     fs.appendFileSync(path.join(logDir, 'query_logs.jsonl'), JSON.stringify(entry) + '\n', 'utf8');
@@ -96,85 +113,99 @@ function saveLog(query, model, durationMs, text) {
 export async function POST(req) {
   try {
     const { message } = await req.json();
-
-    const geminiKey = process.env.GEMINI_API_KEY;
-    const groqKey = process.env.GROQ_API_KEY;
     const startTime = Date.now();
     const errors = [];
 
-    const prompt = `Eres el "Bogati Brain", la inteligencia central de Bogati Sabor Adictivo S.A.S.
-Tu objetivo es responder a las preguntas de los ejecutivos basándote ÚNICAMENTE en la siguiente base de conocimiento.
-Sé directo, claro y conciso. Si la información no está en la base de conocimiento, responde educadamente que no tienes esa información en el sistema.
+    const geminiKey  = process.env.GEMINI_API_KEY;
+    const groqKey    = process.env.GROQ_API_KEY;
+    const deepseekKey = process.env.DEEPSEEK_API_KEY;
 
---- INICIO DE LA BASE DE CONOCIMIENTO BOGATI ---
-${brainContext}
---- FIN DE LA BASE DE CONOCIMIENTO ---
-
-Pregunta del usuario: ${message}
-Respuesta:`;
-
-    // 1️⃣ Intentar modelos Gemini — con 2 ciclos de reintentos para 503
+    // ── 1️⃣ Gemini (contexto completo, 2 reintentos) ──────────────────────────
     if (geminiKey) {
       const genAI = new GoogleGenerativeAI(geminiKey);
+      const prompt = buildPrompt(CONTEXT_FULL, message);
 
       for (let intento = 1; intento <= 2; intento++) {
         if (intento > 1) {
-          console.log(`[BogatiBrain] Reintento ${intento} con Gemini (espera 2s)...`);
           await new Promise(r => setTimeout(r, 2000));
         }
-
         for (const modelName of GEMINI_MODELS) {
           try {
-            console.log(`[BogatiBrain] Gemini ${modelName} (intento ${intento})`);
+            console.log(`[Brain] Gemini ${modelName} (intento ${intento})`);
             const text = await tryGeminiModel(genAI, modelName, prompt);
             const durationMs = Date.now() - startTime;
             saveLog(message, modelName, durationMs, text);
-            console.log(`[BogatiBrain] ✅ Respondió ${modelName} en ${durationMs}ms`);
+            console.log(`[Brain] ✅ ${modelName} OK en ${durationMs}ms`);
             return NextResponse.json({ reply: text, model: modelName });
           } catch (err) {
-            const is503 = err.message?.includes('503');
-            const msg = `Gemini ${modelName} (intento ${intento}): ${err.message?.slice(0, 120)}`;
+            const msg = `Gemini ${modelName} (intento ${intento}): ${err.message}`;
             errors.push(msg);
-            console.warn(`[BogatiBrain] ❌ ${msg}`);
-            // Si no es 503 (ej: 404 deprecado), no tiene sentido reintentar este modelo
-            if (!is503) break;
+            console.warn(`[Brain] ❌ ${msg}`);
           }
         }
       }
     } else {
-      errors.push("GEMINI_API_KEY no configurada en Vercel");
+      errors.push("GEMINI_API_KEY no configurada");
     }
 
-    // 2️⃣ Fallback a Groq — prueba varios modelos
+    // ── 2️⃣ DeepSeek (contexto medio, 64K ventana) ───────────────────────────
+    if (deepseekKey) {
+      const prompt = buildPrompt(CONTEXT_MEDIUM, message);
+      try {
+        console.log("[Brain] DeepSeek deepseek-chat...");
+        const text = await tryOpenAICompatible(
+          "https://api.deepseek.com/v1/chat/completions",
+          deepseekKey,
+          "deepseek-chat",
+          prompt
+        );
+        const durationMs = Date.now() - startTime;
+        saveLog(message, "deepseek-chat", durationMs, text);
+        console.log(`[Brain] ✅ DeepSeek OK en ${durationMs}ms`);
+        return NextResponse.json({ reply: text, model: "deepseek-chat" });
+      } catch (err) {
+        const msg = `DeepSeek: ${err.message}`;
+        errors.push(msg);
+        console.warn(`[Brain] ❌ ${msg}`);
+      }
+    } else {
+      errors.push("DEEPSEEK_API_KEY no configurada en Vercel");
+    }
+
+    // ── 3️⃣ Groq (contexto reducido para no exceder límite) ───────────────────
     if (groqKey) {
+      const prompt = buildPrompt(CONTEXT_SMALL, message);
       for (const modelName of GROQ_MODELS) {
         try {
-          console.log(`[BogatiBrain] Groq ${modelName}...`);
-          const text = await tryGroqModel(groqKey, modelName, prompt);
+          console.log(`[Brain] Groq ${modelName}...`);
+          const text = await tryOpenAICompatible(
+            "https://api.groq.com/openai/v1/chat/completions",
+            groqKey,
+            modelName,
+            prompt
+          );
           const durationMs = Date.now() - startTime;
           saveLog(message, `groq/${modelName}`, durationMs, text);
-          console.log(`[BogatiBrain] ✅ Respondió Groq ${modelName} en ${durationMs}ms`);
+          console.log(`[Brain] ✅ Groq ${modelName} OK en ${durationMs}ms`);
           return NextResponse.json({ reply: text, model: `groq/${modelName}` });
         } catch (err) {
-          const msg = `Groq ${modelName}: ${err.message?.slice(0, 120)}`;
+          const msg = `Groq ${modelName}: ${err.message}`;
           errors.push(msg);
-          console.warn(`[BogatiBrain] ❌ ${msg}`);
+          console.warn(`[Brain] ❌ ${msg}`);
         }
       }
     } else {
       errors.push("GROQ_API_KEY no configurada en Vercel");
     }
 
-    // 3️⃣ Todo falló — mostrar errores para diagnóstico
-    console.error("[BogatiBrain] Todos los proveedores fallaron:", errors);
+    // ── 4️⃣ Todo falló ────────────────────────────────────────────────────────
+    console.error("[Brain] Todos los proveedores fallaron:", errors);
     return NextResponse.json({
       reply: `⚠️ DEBUG - Errores:\n${errors.map((e, i) => `${i + 1}. ${e}`).join('\n')}`,
     }, { status: 503 });
 
   } catch (error) {
     console.error("Error general en /api/chat:", error);
-    return NextResponse.json({
-      reply: "Error interno del servidor. Por favor intenta de nuevo.",
-    }, { status: 500 });
+    return NextResponse.json({ reply: "Error interno. Intenta de nuevo." }, { status: 500 });
   }
 }
