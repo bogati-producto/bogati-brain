@@ -51,7 +51,7 @@ async function tryGroq(prompt) {
       "Authorization": `Bearer ${groqKey}`,
     },
     body: JSON.stringify({
-      model: "meta-llama/llama-4-scout-17b-16e-instruct",
+      model: "llama-3.3-70b-versatile",
       messages: [{ role: "user", content: prompt }],
       max_tokens: 1024,
       temperature: 0.3,
@@ -105,6 +105,8 @@ ${brainContext}
 Pregunta del usuario: ${message}
 Respuesta:`;
 
+    const errors = [];
+
     // 1️⃣ Intentar modelos Gemini en secuencia
     if (geminiKey) {
       const genAI = new GoogleGenerativeAI(geminiKey);
@@ -116,25 +118,30 @@ Respuesta:`;
           saveLog(message, modelName, durationMs, text);
           return NextResponse.json({ reply: text, model: modelName });
         } catch (err) {
-          console.warn(`[BogatiBrain] Falló ${modelName}: ${err.message}`);
+          const msg = `Gemini ${modelName}: ${err.message}`;
+          errors.push(msg);
+          console.warn(`[BogatiBrain] ${msg}`);
         }
       }
+    } else {
+      errors.push("GEMINI_API_KEY no está configurada en el entorno");
     }
 
-    // 2️⃣ Fallback a Groq (Llama 4) si todos los Gemini fallaron
+    // 2️⃣ Fallback a Groq si todos los Gemini fallaron
     try {
-      console.log("[BogatiBrain] Todos Gemini fallaron → intentando Groq Llama 4...");
+      console.log("[BogatiBrain] Gemini fallaron → intentando Groq...");
       const text = await tryGroq(prompt);
       const durationMs = Date.now() - startTime;
-      saveLog(message, "groq/llama-4-scout", durationMs, text);
-      return NextResponse.json({ reply: text, model: "groq/llama-4-scout" });
+      saveLog(message, "groq/llama-3.3-70b", durationMs, text);
+      return NextResponse.json({ reply: text, model: "groq/llama-3.3-70b" });
     } catch (groqErr) {
+      errors.push(`Groq: ${groqErr.message}`);
       console.error("[BogatiBrain] Groq también falló:", groqErr.message);
     }
 
-    // 3️⃣ Si todo falló
+    // 3️⃣ Si todo falló — mostramos errores reales para diagnóstico
     return NextResponse.json({
-      reply: "⚠️ Los servicios de IA están momentáneamente saturados. Por favor intenta de nuevo en unos segundos.",
+      reply: `⚠️ DEBUG - Errores encontrados:\n${errors.map((e, i) => `${i+1}. ${e}`).join('\n')}`,
     }, { status: 503 });
 
   } catch (error) {
