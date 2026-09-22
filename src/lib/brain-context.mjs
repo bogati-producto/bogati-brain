@@ -10,24 +10,24 @@ export function parseRouter(content) {
     if (cells.length !== 6) return [];
     const files = [...cells[3].matchAll(/`([^`]+\.md)`/g)].map(match => match[1]);
     if (!files.length) return [];
-    return [{ name: cells[0].replaceAll('**', ''), keywords: cells[2].split(',').map(normalize), files, row: line }];
+    return [{ name: cells[0].replaceAll('**', ''), keywords: cells[2].split(',').map(normalize), files, owner: cells[4], updated: cells[5], row: line }];
   });
 }
 function score(text, keywords) {
   const haystack = ` ${normalize(text)} `;
   return keywords.reduce((total, keyword) => total + (keyword && haystack.includes(` ${keyword} `) ? keyword.split(' ').length ** 2 : 0), 0);
 }
-export function resolveQuestion(nodes, question) {
+export function resolveQuestion(nodes, question, selectedFile = null) {
   const byPath = new Map(nodes.map(node => [node.id, node]));
   const router = byPath.get('ROUTER.md');
   const laws = byPath.get('LEYES_SUPREMAS.md');
   if (!router?.content || !laws?.content) throw new Error('Faltan ROUTER.md o LEYES_SUPREMAS.md');
-  const ranked = parseRouter(router.content).map(route => ({ ...route, score: score(question, route.keywords) }))
+  const ranked = parseRouter(router.content).map(route => ({ ...route, score: selectedFile ? (route.files.includes(selectedFile) ? 1 : 0) : score(question, route.keywords) }))
     .filter(route => route.score > 0).sort((a, b) => b.score - a.score);
   if (!ranked.length) return { reply: NO_INFORMATION };
   if (ranked[1]?.score === ranked[0].score) return { reply: `Para consultar el documento correcto, precisa el tema: ${ranked.filter(r => r.score === ranked[0].score).map(r => r.name).join(' o ')}.` };
   const route = ranked[0];
-  let documents = route.files.map(file => byPath.get(file));
+  let documents = (selectedFile ? [selectedFile] : route.files).map(file => byPath.get(file));
   if (documents.some(doc => !doc?.content)) throw new Error('El índice apunta a un archivo ausente');
   if (documents.length > 1) {
     const terms = normalize(question).split(' ').filter(word => word.length > 3);

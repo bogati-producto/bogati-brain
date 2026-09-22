@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { resolveQuestion, NO_INFORMATION } from './brain-context.mjs';
 import { providers, queryProviders, ATTEMPT_TIMEOUT_MS, MAX_ATTEMPTS } from './chat-providers.mjs';
+import { querySales, parseCsv, SALES_SOURCE } from './sales-query.mjs';
+import { validatePlan } from './semantic-router.mjs';
 
 const { nodes } = JSON.parse(fs.readFileSync(new URL('../data/brain-data.json', import.meta.url), 'utf8'));
 test('routes real questions to canonical documents and retains complete laws', () => {
@@ -68,4 +70,44 @@ test('timeouts try all seven candidates and preserve diagnostics', async () => {
   }});
   assert.equal(calls,7);
   assert.ok(result.failures.every(f=>f.kind==='timeout'));
+});
+
+const csv = nodes.find(n => n.id === SALES_SOURCE).content;
+test('Chillogallo totals reconcile to the independently prepared historical summary', () => {
+  const result = querySales(csv, {store:'Chillogallo',from:null,to:null,groupBy:'year'});
+  assert.equal(result.cents, 17872400);
+  assert.equal(result.count,26);
+  assert.equal(result.transactions,31527);
+  assert.deepEqual(result.annual,[['2024',3227400],['2025',8457400],['2026',6187600]]);
+  assert.equal(querySales(csv,{store:'Chillogallo',from:'2024-11',to:'2024-11'}).cents,540900);
+  assert.equal(querySales(csv,{store:'Chillogallo',from:'2025-01',to:'2025-12'}).cents,8457400);
+});
+test('unknown and ambiguous stores and absent periods never become fabricated totals', () => {
+  for (const filter of [{store:'Local inexistente',from:null,to:null},{store:'Quito',from:null,to:null},
+    {store:'Chillogallo',from:'2030-01',to:'2030-12'}]) {
+    const result=querySales(csv,filter);
+    assert.ok(result.clarification);
+    assert.equal(result.cents,undefined);
+  }
+});
+test('CSV supports quoted fields and decimal cents; duplicate months fail closed', () => {
+  const sample='RUC,Bodega,Año Mes,Ventas,Transacciones\n1,"Local, Uno",2025-01,$0.10,1\n1,"Local, Uno",2025-02,$0.20,2';
+  assert.equal(parseCsv(sample)[1][1],'Local, Uno');
+  assert.equal(querySales(sample,{store:'Local Uno',from:null,to:null}).cents,30);
+  assert.throws(()=>querySales(sample+'\n1,"Local, Uno",2025-02,$0.20,2',{store:'Local Uno',from:null,to:null}),/duplicados/);
+});
+test('semantic plans can only select indexed paths and validated dates', () => {
+  const plan={file:'ventas/ventas_por_pdv_historico.md',sales:{store:'Chillogallo',from:null,to:null,groupBy:'year'},clarification:null};
+  assert.equal(validatePlan(JSON.stringify(plan),nodes).sales.store,'Chillogallo');
+  assert.throws(()=>validatePlan(JSON.stringify({...plan,file:'../../secrets'}),nodes));
+  assert.throws(()=>validatePlan(JSON.stringify({...plan,sales:{...plan.sales,from:'2024-99'}}),nodes));
+  assert.throws(()=>validatePlan(JSON.stringify({...plan,sales:{...plan.sales,from:'2025-01',to:'2024-01'}}),nodes));
+});
+test('invalid structured responses are retried rather than treated as answers',async()=>{
+  let calls=0;
+  const result=await queryProviders([],providers([],{GROQ_API_KEY:'test'}),{log(){},validateReply:t=>validatePlan(t,nodes),fetchImpl:async()=>{
+    calls++;
+    return new Response(JSON.stringify({choices:[{message:{content:calls===1?'not JSON':'{"file":null,"sales":null,"clarification":null}'}}]}));
+  }});
+  assert.equal(calls,2);assert.ok(result.reply);
 });

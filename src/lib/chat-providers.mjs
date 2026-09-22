@@ -22,7 +22,7 @@ export function providers(messages, env = process.env) {
   return options.slice(0, MAX_ATTEMPTS);
 }
 
-export async function queryProviders(messages, options, { fetchImpl = fetch, timeoutMs = ATTEMPT_TIMEOUT_MS, log = console.info } = {}) {
+export async function queryProviders(messages, options, { fetchImpl = fetch, timeoutMs = ATTEMPT_TIMEOUT_MS, log = console.info, validateReply } = {}) {
   const failures = [];
   const blocked = new Set();
   for (const provider of options.slice(0, MAX_ATTEMPTS)) {
@@ -52,6 +52,7 @@ export async function queryProviders(messages, options, { fetchImpl = fetch, tim
       }
       const reply = data.choices?.[0]?.message?.content;
       if (typeof reply !== 'string' || !reply.trim()) throw new Error('empty_reply');
+      if (validateReply) validateReply(reply);
       log({ provider: provider.name, model: provider.model, status, durationMs: Date.now() - started,
         inputTokens: data.usage?.prompt_tokens, outputTokens: data.usage?.completion_tokens });
       return { reply, model: `${provider.name}/${provider.model}`, failures };
