@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 export default function SearchBar() {
   const [query, setQuery] = useState('');
   const [result, setResult] = useState(null);
+  const [history, setHistory] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
@@ -21,10 +22,13 @@ export default function SearchBar() {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: query }),
+        body: JSON.stringify({ message: query, history }),
       });
       const data = await res.json();
       setResult(data.reply || "Error al procesar la solicitud.");
+      if (res.ok && data.reply) setHistory(previous => [...previous,
+        { role: 'user', content: query }, { role: 'assistant', content: data.reply }
+      ].slice(-4));
     } catch (error) {
       setResult("Error de conexión con el cerebro.");
     } finally {

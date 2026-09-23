@@ -1,3 +1,4 @@
+import { finalReply } from './chat-output.mjs';
 export const ATTEMPT_TIMEOUT_MS = 15000;
 export const MAX_ATTEMPTS = 7;
 
@@ -50,7 +51,7 @@ export async function queryProviders(messages, options, { fetchImpl = fetch, tim
         log(failure);
         continue;
       }
-      const reply = data.choices?.[0]?.message?.content;
+      const reply = finalReply(data.choices?.[0]);
       if (typeof reply !== 'string' || !reply.trim()) throw new Error('empty_reply');
       if (validateReply) validateReply(reply);
       log({ provider: provider.name, model: provider.model, status, durationMs: Date.now() - started,
