@@ -60,8 +60,11 @@ export async function queryProviders(messages, options, { fetchImpl = fetch, tim
       const data = await response.json();
       if (!response.ok) {
         const metadata = data.error?.metadata;
+        // OpenRouter puede devolver retry-after por el límite del modelo/upstream.
+        // Solo bloquear toda la cuenta cuando su propio contador confirma cero;
+        // los demás modelos gratuitos deben seguir siendo respaldos utilizables.
         const accountRateLimit = status === 429 && provider.name === 'openrouter' && !metadata?.provider_name &&
-          (response.headers.get('x-ratelimit-remaining') === '0' || response.headers.has('retry-after'));
+          response.headers.get('x-ratelimit-remaining') === '0';
         if ([401, 402, 403].includes(status) || accountRateLimit) blocked.add(provider.name);
         if (status === 429) cooldownStore.set(accountRateLimit ? accountKey : modelKey, Date.now() + retryDelay(response.headers.get('retry-after')));
         const failure = { provider: provider.name, model: provider.model, status,
