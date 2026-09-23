@@ -49,6 +49,23 @@ async function answer(req, progress = () => {}) {
         /\b(?:producto|vaso|copa|waffle|crepe|helado)\b/i.test(message)) {
       return NextResponse.json({ reply:'Los archivos de productos tienen totales mensuales, no ventas por día. No puedo afirmar cuántas unidades se vendieron específicamente en esa fecha. Puedo consultar el total del mes completo si me indicas el mes y el año.', requestId });
     }
+    // Comparaciones explícitas de productos + PDV + mes son deterministas y no
+    // deben quedar bloqueadas por los límites temporales de los proveedores.
+    const explicitProducts = ['Vaso Zeus','Vaso Atenea','Vaso Hades'].filter(product =>
+      new RegExp(`\\b${product.replace(' ', '\\s+')}\\b`, 'i').test(message) ||
+      new RegExp(`\\b${product.replace(/^Vaso /, '')}\\b`, 'i').test(message));
+    const monthMatch = message.match(/(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\s+(?:de\s+)?(20\d{2})/i);
+    const storeMatch = message.match(/(?:pdv\s+)?((?:shopping|tung)[\wáéíóúñ ]*ambato)/i);
+    if (explicitProducts.length === 3 && monthMatch && storeMatch) {
+      const monthNames = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+      const month = String(monthNames.indexOf(monthMatch[1].toLowerCase()) + 1).padStart(2,'0');
+      const productPlan = { products: explicitProducts, store: storeMatch[1].trim(), from:`${monthMatch[2]}-${month}`, to:`${monthMatch[2]}-${month}` };
+      const parts = brainData.nodes.filter(node => node.id.startsWith(PART_PREFIX) && node.id.endsWith('.csv'));
+      const result = queryProducts(parts, productPlan);
+      progress({label:'Calculando sobre los registros…',files:[PRODUCT_INDEX,...(result.sources||[])]});
+      const doc = brainData.nodes.find(node => node.id === PRODUCT_INDEX)?.content || '';
+      return NextResponse.json({ reply: formatProducts(result, { channel:doc.match(/^Canal: (.+)$/m)?.[1], updated:doc.match(/^Actualizado: (.+)$/m)?.[1], parts:parts.length }), sources:[PRODUCT_INDEX,...(result.sources||[])], requestId });
+    }
     const recipe=findRecipe(brainData.nodes,message);
     if(recipe){progress({label:'Leyendo la receta del archivo…',files:recipe.files});return NextResponse.json({reply:recipe.reply,sources:recipe.files,requestId});}
     const planningMessages = plannerMessages(brainData.nodes, message);
