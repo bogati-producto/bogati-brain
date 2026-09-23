@@ -24,7 +24,7 @@ function scanDirectory(dir, fileList = []) {
   return fileList;
 }
 
-function generateGraphData() {
+async function generateGraphData() {
   const mdFiles = scanDirectory(BRAIN_DIR);
   
   const nodes = [];
@@ -72,6 +72,9 @@ function generateGraphData() {
     nodes,
     links
   };
+  const {buildAreaIndex}=await import('../src/lib/brain-context.mjs');
+  const areaIndex=buildAreaIndex(nodes);
+  fs.writeFileSync(path.join(__dirname,'../src/data/area-index.json'),JSON.stringify(areaIndex,null,2));
 
   // Ensure output directory exists
   const outputDir = path.dirname(OUTPUT_FILE);

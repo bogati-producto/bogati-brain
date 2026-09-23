@@ -1,151 +1,35 @@
 "use client";
-
-import { useEffect, useRef } from 'react';
-import * as d3 from 'd3';
-import { motion } from 'framer-motion';
-
-export default function BrainGraph({ data, onNodeClick }) {
-  const svgRef = useRef(null);
-  const containerRef = useRef(null);
-
-  useEffect(() => {
-    if (!data || !data.nodes || data.nodes.length === 0) return;
-    
-    // Clear previous graph
-    d3.select(svgRef.current).selectAll("*").remove();
-
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-
-    const svg = d3.select(svgRef.current)
-      .attr("width", width)
-      .attr("height", height)
-      .attr("viewBox", [0, 0, width, height]);
-
-    // Zoom setup
-    const zoom = d3.zoom()
-      .scaleExtent([0.1, 4])
-      .on("zoom", (event) => {
-        g.attr("transform", event.transform);
-      });
-    svg.call(zoom);
-
-    const g = svg.append("g");
-
-    // Simulation
-    const simulation = d3.forceSimulation(data.nodes)
-      .force("link", d3.forceLink(data.links).id(d => d.id).distance(150))
-      .force("charge", d3.forceManyBody().strength(-300))
-      .force("center", d3.forceCenter(width / 2, height / 2))
-      .force("collide", d3.forceCollide().radius(40));
-
-    // Links
-    const link = g.append("g")
-      .selectAll("line")
-      .data(data.links)
-      .join("line")
-      .attr("stroke", "rgba(38, 197, 243, 0.3)") // #26C5F3 with opacity
-      .attr("stroke-width", 2);
-
-    // Nodes
-    const node = g.append("g")
-      .selectAll("g")
-      .data(data.nodes)
-      .join("g")
-      .attr("cursor", "pointer")
-      .call(drag(simulation))
-      .on("click", (event, d) => {
-        if (onNodeClick) onNodeClick(d);
-      });
-
-    // Node circles
-    node.append("circle")
-      .attr("r", d => d.id === 'BOGATI_BRAIN' ? 25 : 15)
-      .attr("fill", d => d.id === 'BOGATI_BRAIN' ? "#B429F9" : "#26C5F3")
-      .attr("stroke", "#ffffff")
-      .attr("stroke-width", 1.5)
-      .attr("stroke-opacity", 0.3);
-      
-    // Glow effect for hub
-    node.filter(d => d.id === 'BOGATI_BRAIN')
-      .append("circle")
-      .attr("r", 35)
-      .attr("fill", "none")
-      .attr("stroke", "#B429F9")
-      .attr("stroke-width", 2)
-      .style("opacity", 0.5)
-      .style("animation", "pulse 2s infinite");
-
-    // Labels
-    node.append("text")
-      .text(d => d.label)
-      .attr("x", 20)
-      .attr("y", 5)
-      .style("fill", "#ffffff")
-      .style("font-size", "12px")
-      .style("font-family", "sans-serif")
-      .style("pointer-events", "none")
-      .style("text-shadow", "0px 2px 4px rgba(0,0,0,0.8)");
-
-    simulation.on("tick", () => {
-      link
-        .attr("x1", d => d.source.x)
-        .attr("y1", d => d.source.y)
-        .attr("x2", d => d.target.x)
-        .attr("y2", d => d.target.y);
-
-      node
-        .attr("transform", d => `translate(${d.x},${d.y})`);
-    });
-
-    // Handle Resize
-    const handleResize = () => {
-      const w = window.innerWidth;
-      const h = window.innerHeight;
-      svg.attr("width", w).attr("height", h).attr("viewBox", [0, 0, w, h]);
-      simulation.force("center", d3.forceCenter(w / 2, h / 2));
-      simulation.alpha(0.3).restart();
-    };
-    window.addEventListener('resize', handleResize);
-
-    return () => {
-      simulation.stop();
-      window.removeEventListener('resize', handleResize);
-    };
-  }, [data]);
-
-  // Drag functionality
-  function drag(simulation) {
-    function dragstarted(event) {
-      if (!event.active) simulation.alphaTarget(0.3).restart();
-      event.subject.fx = event.subject.x;
-      event.subject.fy = event.subject.y;
-    }
-    function dragged(event) {
-      event.subject.fx = event.x;
-      event.subject.fy = event.y;
-    }
-    function dragended(event) {
-      if (!event.active) simulation.alphaTarget(0);
-      event.subject.fx = null;
-      event.subject.fy = null;
-    }
-    return d3.drag()
-      .on("start", dragstarted)
-      .on("drag", dragged)
-      .on("end", dragended);
-  }
-
-  return (
-    <div ref={containerRef} className="absolute inset-0 bg-[#03001C] overflow-hidden">
-      <svg ref={svgRef} className="w-full h-full" />
-      <style dangerouslySetInnerHTML={{__html: `
-        @keyframes pulse {
-          0% { transform: scale(1); opacity: 0.6; }
-          50% { transform: scale(1.3); opacity: 0; }
-          100% { transform: scale(1); opacity: 0; }
-        }
-      `}} />
-    </div>
-  );
+import {useEffect,useRef,useState} from 'react';
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+export default function BrainGraph({map,onNodeClick,activeFiles=[]}){
+ const host=useRef(null),callback=useRef(onNodeClick),active=useRef(activeFiles),reset=useRef(null);
+ const [hover,setHover]=useState(null),[failed,setFailed]=useState(false);
+ useEffect(()=>{callback.current=onNodeClick;active.current=activeFiles;},[onNodeClick,activeFiles]);
+ useEffect(()=>{
+ const container=host.current;let renderer;
+ try{renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});}catch{const pending=setTimeout(()=>setFailed(true),0);return()=>clearTimeout(pending);}
+ renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.7));container.appendChild(renderer.domElement);
+ const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(40,1,.1,100);camera.position.set(0,.4,6.8);
+ const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;controls.enablePan=false;controls.minDistance=3.6;controls.maxDistance=10;
+ const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;controls.autoRotate=!reduced;controls.autoRotateSpeed=.22;
+ reset.current=()=>{camera.position.set(0,.4,6.8);controls.target.set(0,0,0);controls.update();};
+ const brain=new THREE.Group();scene.add(brain);brain.rotation.z=-.1;
+ // Decorative bilateral envelope: only the larger colored spheres represent files.
+ const surface=[];
+ for(const side of [-1,1])for(let i=0;i<6200;i++){const y=1-2*(i+.5)/6200,phi=i*2.399963,r=Math.sqrt(1-y*y),x=r*Math.cos(phi),z=r*Math.sin(phi),fold=1+.042*Math.sin(phi*5+y*23)*Math.sin(y*31+z*8);surface.push(side*(.11+(x+1)*.79)*fold,y*1.24*fold,z*.92*fold);}
+ const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(surface,3));brain.add(new THREE.Points(geo,new THREE.PointsMaterial({color:'#9076cd',size:.012,transparent:true,opacity:.29,depthWrite:false})));
+ const meshes=map.nodes.map(n=>{const m=new THREE.Mesh(new THREE.SphereGeometry(.039,12,12),new THREE.MeshBasicMaterial({color:n.color}));m.position.set(...n.position);m.userData=n;brain.add(m);m.add(new THREE.Mesh(new THREE.SphereGeometry(.082,12,12),new THREE.MeshBasicMaterial({color:n.color,transparent:true,opacity:.13,depthWrite:false})));return m;});
+ const byId=new Map(meshes.map(m=>[m.userData.id,m]));
+ const edges=map.links.map(l=>{const a=byId.get(l.source).position,b=byId.get(l.target).position,line=new THREE.Line(new THREE.BufferGeometry().setFromPoints([a,b]),new THREE.LineBasicMaterial({color:l.kind==='Referencia entre archivos'?'#a6a0eb':'#55718e',transparent:true,opacity:.13}));brain.add(line);const pulse=new THREE.Mesh(new THREE.SphereGeometry(.025,8,8),new THREE.MeshBasicMaterial({color:'#d8fff5'}));pulse.visible=false;brain.add(pulse);return {line,pulse,a,b,...l};});
+ const ray=new THREE.Raycaster(),pointer=new THREE.Vector2();let down=null,hovered=null;
+ const locate=e=>{const r=renderer.domElement.getBoundingClientRect();pointer.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(pointer,camera);return ray.intersectObjects(meshes,false)[0]?.object;};
+ const move=e=>{hovered=locate(e);setHover(hovered?.userData||null);container.style.cursor=hovered?'pointer':'grab';};
+ const start=e=>{down=[e.clientX,e.clientY];};const end=e=>{if(down&&Math.hypot(e.clientX-down[0],e.clientY-down[1])<6){const m=locate(e);if(m)callback.current(m.userData);}down=null;};
+ renderer.domElement.addEventListener('pointermove',move);renderer.domElement.addEventListener('pointerdown',start);renderer.domElement.addEventListener('pointerup',end);
+ const resize=()=>{const w=container.clientWidth,h=container.clientHeight;renderer.setSize(w,h);camera.aspect=w/h;camera.zoom=Math.min(1,camera.aspect/1.1);camera.updateProjectionMatrix();};const observer=new ResizeObserver(resize);observer.observe(container);resize();
+ let frame;const draw=t=>{controls.update();const ids=new Set(active.current);for(const m of meshes)m.scale.setScalar(ids.has(m.userData.id)?1.7:m===hovered?1.5:1);edges.forEach((e,i)=>{const lit=ids.has(e.source)&&ids.has(e.target);e.line.material.opacity=lit?.65:hovered&&(e.source===hovered.userData.id||e.target===hovered.userData.id)?.48:.13;e.pulse.visible=lit&&!reduced;if(e.pulse.visible)e.pulse.position.lerpVectors(e.a,e.b,(t/2500+i*.19)%1);});renderer.render(scene,camera);frame=requestAnimationFrame(draw);};frame=requestAnimationFrame(draw);
+ return()=>{cancelAnimationFrame(frame);observer.disconnect();controls.dispose();scene.traverse(o=>{o.geometry?.dispose();o.material?.dispose();});renderer.dispose();renderer.domElement.remove();};
+ },[map]);
+ return <><div className="neural-canvas" ref={host}/><div className="brain-caption"><span>VISTA NEURONAL / 3D</span><p>{hover?hover.label.replaceAll('_',' '):'Cada punto de luz, una fuente de conocimiento.'}</p><small>{hover?hover.group:'Arrastra para girar · Desplaza para acercarte'}</small></div><button className="reset-view" onClick={()=>reset.current?.()}>↺ Restablecer vista</button>{failed&&<div className="webgl-notice">No se pudo iniciar la vista 3D. Explora los archivos en el panel izquierdo.</div>}</>;
 }

@@ -5,7 +5,33 @@ import { readProductParts, queryProducts, formatProducts, PRODUCT_INDEX } from '
 import { plannerMessages, validatePlan } from './semantic-router.mjs';
 
 const header = 'Producto,Bodega,Suma de Ventas $,Suma de Unidades,Año Mes\n';
+
+test('comparison calculates groups, preserves missing values and rejects overlapping groups',()=>{
+  const parts=[{id:'test.csv',content:header+'A,Local,10,2,2026-08\nB,Local,12,3,2026-08\nC,Local,20,4,2026-08\nA,Otro,100,20,2026-08\nA,Local,99,10,2025-08'}];
+  const f={products:['A','B','C'],store:'Local',from:'2026-08',to:'2026-08',comparisonGroups:[[0,1],[2]]};
+  const r=queryProducts(parts,f);
+  assert.deepEqual(r.comparison.map(i=>i.units),[2,3,4]);
+  assert.match(formatProducts(r),/5 unidades y \$22,00/);
+  assert.match(formatProducts(r),/25%/);
+  const missing=queryProducts(parts,{...f,products:['A','B','Falta']});
+  assert.match(formatProducts(missing),/no se determina un ganador/);
+  assert.throws(()=>queryProducts(parts,{...f,comparisonGroups:[[0,1],[1]]}));
+  assert.throws(()=>queryProducts(parts,{...f,products:['A','a']}));
+});
 const sample = { id: 'ventas/productos_pdv/parte_001.csv', content: header + 'Copa Bogati,Latacunga Norte,4.50,2,2025-10\nCopa Bogati,Latacunga Sur,6.75,3,2025-10\nCopa Bogati,Quito,9,4,2025-10\n2 Copas Bogati,Latacunga Norte,10,2,2025-10' };
+
+test('rankings respect place, period, metric and duplicate records',()=>{
+  const f={ranking:true,product:null,metric:'units',limit:1,store:'Latacunga Norte',from:'2025-10',to:'2025-10'};
+  const parts=[sample,{...sample,id:'copy.csv'}];
+  const tied=queryProducts(parts,f);
+  assert.equal(tied.ranking.length,2);
+  assert.equal(tied.ranking[0].units,2);
+  assert.equal(queryProducts(parts,{...f,metric:'revenue'}).ranking[0].product,'2 Copas Bogati');
+  assert.equal(queryProducts(parts,{...f,store:null}).ranking[0].units,9);
+  assert.match(formatProducts(tied,{parts:2}),/Carga parcial/);
+  assert.match(queryProducts(parts,{...f,from:'2026-01',to:'2026-12'}).reply,/No hay registros de productos/);
+  assert.throws(()=>queryProducts(parts,{...f,limit:0}));
+});
 
 test('city sums product across matching stores; exact PDV and combo remain separate', () => {
   const filter = { product:'Copa Bogati',store:'Latacunga',from:'2025-10',to:'2025-10' };

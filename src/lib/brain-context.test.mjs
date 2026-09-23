@@ -35,7 +35,7 @@ test('unknown topics do not need an AI call; missing rules fail closed', () => {
 test('exact reported sales question qualifies for Groq and retains seven fallbacks', () => {
   const context = resolveQuestion(nodes, 'MEJOR PRODUCTO VENDIDO EN 2026');
   assert.deepEqual(context.files, ['ventas/ventas_productos_acumulado_2026.md']);
-  const options = providers(context.messages, { GROQ_API_KEY: 'test', OPENROUTER_API_KEY: 'test' });
+  const options = providers(context.messages, { GROQ_FREE_TIER_CONFIRMED:'true', GROQ_API_KEY: 'test', OPENROUTER_API_KEY: 'test' });
   assert.equal(options[0].name, 'groq');
   assert.equal(options.length, MAX_ATTEMPTS);
   assert.equal(ATTEMPT_TIMEOUT_MS, 15000);
@@ -44,7 +44,7 @@ test('exact reported sales question qualifies for Groq and retains seven fallbac
 test('provider 429 falls back and success stops further attempts', async () => {
   const options = providers([], {OPENROUTER_API_KEY:'test'});
   let calls = 0;
-  const result = await queryProviders([], options, {log(){}, fetchImpl:async()=> {
+  const result = await queryProviders([], options, {cooldownStore:new Map(),log(){}, fetchImpl:async()=> {
     calls++;
     return calls === 1 ? new Response(JSON.stringify({error:{metadata:{provider_name:'upstream'}}}),{status:429})
       : new Response(JSON.stringify({choices:[{message:{content:'Respuesta'}}]}));
@@ -55,7 +55,7 @@ test('provider 429 falls back and success stops further attempts', async () => {
 });
 test('account cooldown is respected rather than retrying all free models', async () => {
   let calls=0;
-  const result=await queryProviders([],providers([],{OPENROUTER_API_KEY:'test'}),{log(){},fetchImpl:async()=>{
+  const result=await queryProviders([],providers([],{OPENROUTER_API_KEY:'test'}),{cooldownStore:new Map(),log(){},fetchImpl:async()=>{
     calls++;
     return new Response(JSON.stringify({error:{code:429}}),{status:429,headers:{'retry-after':'60','x-ratelimit-remaining':'0'}});
   }});
@@ -113,7 +113,7 @@ test('semantic plans can only select indexed paths and validated dates', () => {
 });
 test('invalid structured responses are retried rather than treated as answers',async()=>{
   let calls=0;
-  const result=await queryProviders([],providers([],{GROQ_API_KEY:'test'}),{log(){},validateReply:t=>validatePlan(t,nodes),fetchImpl:async()=>{
+  const result=await queryProviders([],providers([],{GROQ_FREE_TIER_CONFIRMED:'true',GROQ_API_KEY:'test'}),{log(){},validateReply:t=>validatePlan(t,nodes),fetchImpl:async()=>{
     calls++;
     return new Response(JSON.stringify({choices:[{message:{content:calls===1?'not JSON':'{"file":null,"sales":null,"clarification":null}'}}]}));
   }});

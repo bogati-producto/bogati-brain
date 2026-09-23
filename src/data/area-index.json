@@ -1,0 +1,1004 @@
+[
+  {
+    "name": "Productos por PDV y mes — carga parcial",
+    "keywords": [
+      "producto por pdv",
+      "unidade por local",
+      "producto por ciudad",
+      "copa vendida",
+      "combo vendido",
+      "producto por mes"
+    ],
+    "files": [
+      "ventas/productos_por_pdv_historico.md"
+    ],
+    "owner": "Eduardo Naula (Coordinador de Producto)",
+    "updated": "2026-09-22",
+    "row": "| **Productos por PDV y mes — carga parcial** | Unidades y ventas por producto, bodega y mes; partes recibidas, cobertura incompleta; canal no especificado | producto por pdv, unidades por local, productos por ciudad, copas vendidas, combos vendidos, producto por mes | `ventas/productos_por_pdv_historico.md` | Eduardo Naula (Coordinador de Producto) | 2026-09-22 |",
+    "documents": [
+      {
+        "file": "ventas/productos_por_pdv_historico.md",
+        "sections": [
+          {
+            "title": "Productos por PDV y mes — histórico parcial",
+            "start": 0,
+            "end": 16610
+          },
+          {
+            "title": "Alcance y reglas de consulta",
+            "start": 232,
+            "end": 1104
+          },
+          {
+            "title": "Cobertura de las partes recibidas",
+            "start": 1104,
+            "end": 1501
+          },
+          {
+            "title": "Archivos incorporados",
+            "start": 1501,
+            "end": 2948
+          },
+          {
+            "title": "Productos presentes",
+            "start": 2948,
+            "end": 16610
+          }
+        ],
+        "sources": [
+          "ventas/productos_pdv/parte_001.csv",
+          "ventas/productos_pdv/parte_002.csv",
+          "ventas/productos_pdv/parte_003.csv",
+          "ventas/productos_pdv/parte_004.csv",
+          "ventas/productos_pdv/parte_005.csv",
+          "ventas/productos_pdv/parte_006.csv",
+          "ventas/productos_pdv/parte_008.csv",
+          "ventas/productos_pdv/parte_009.csv",
+          "ventas/productos_pdv/parte_010.csv",
+          "ventas/productos_pdv/parte_011.csv",
+          "ventas/productos_pdv/parte_012.csv",
+          "ventas/productos_pdv/parte_013.csv"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "Leyes y Directivas",
+    "keywords": [
+      "regla",
+      "norma",
+      "leye",
+      "alucinacion",
+      "seguridad",
+      "protocolo",
+      "clave",
+      "permiso"
+    ],
+    "files": [
+      "LEYES_SUPREMAS.md"
+    ],
+    "owner": "Dirección General",
+    "updated": "2026-09-08",
+    "row": "| **Leyes y Directivas** | Normas máximas de no alucinación, identidad, seguridad y solo lectura | reglas, normas, leyes, alucinación, seguridad, protocolo, clave, permisos | `LEYES_SUPREMAS.md` | Dirección General | 2026-09-08 |",
+    "documents": [
+      {
+        "file": "LEYES_SUPREMAS.md",
+        "sections": [
+          {
+            "title": "1. IDENTIDAD OFICIAL: BOGATI BRAIN",
+            "start": 186,
+            "end": 798
+          },
+          {
+            "title": "2. BLINDAJE DE SEGURIDAD Y ANTI-INYECCIÃ“N (PROMPT INJECTION)",
+            "start": 798,
+            "end": 1571
+          },
+          {
+            "title": "3. LEY DE INMUNIDAD DE LA BASE DE CONOCIMIENTOS (SOLO LECTURA EN CONSULTAS Y DASHBOARDS)",
+            "start": 1571,
+            "end": 2288
+          },
+          {
+            "title": "4. LEY DE CERO ALUCINACIÃ“N (PROHIBIDO INVENTAR)",
+            "start": 2288,
+            "end": 2697
+          },
+          {
+            "title": "5. SECUENCIA OBLIGATORIA DE CONSULTA",
+            "start": 2697,
+            "end": 3207
+          },
+          {
+            "title": "6. CONDICIONES ÃšNICAS E INVIOLABLES PARA MODIFICAR BOGATI BRAIN",
+            "start": 3207,
+            "end": 4030
+          }
+        ],
+        "sources": []
+      }
+    ]
+  },
+  {
+    "name": "Ventas Acumuladas 2026",
+    "keywords": [
+      "venta",
+      "producto vendido",
+      "ingreso",
+      "facturacion",
+      "unidade",
+      "combo",
+      "pedido ya",
+      "ranking"
+    ],
+    "files": [
+      "ventas/ventas_productos_acumulado_2026.md"
+    ],
+    "owner": "Eduardo Naula (Coordinador de Producto)",
+    "updated": "2026-09-08",
+    "row": "| **Ventas Acumuladas 2026** | Unidades vendidas, ingresos y % participación por producto (01 Ene - 07 Sep 2026) | ventas, productos vendidos, ingresos, facturación, unidades, combos, pedidos ya, ranking | `ventas/ventas_productos_acumulado_2026.md` | Eduardo Naula (Coordinador de Producto) | 2026-09-08 |",
+    "documents": [
+      {
+        "file": "ventas/ventas_productos_acumulado_2026.md",
+        "sections": [
+          {
+            "title": "📊 Ventas Acumuladas por Producto - Canal Pedidos Ya (01 Ene 2026 - 07 Sep 2026)",
+            "start": 0,
+            "end": 4545
+          },
+          {
+            "title": "ðŸ“‹ Desglose Detallado de Ventas por Producto",
+            "start": 1151,
+            "end": 4545
+          }
+        ],
+        "sources": []
+      }
+    ]
+  },
+  {
+    "name": "Pedidos Ya por PDV, mes y semana",
+    "keywords": [
+      "pedido ya",
+      "ordene pedido ya",
+      "ordene pedido ya",
+      "pedido por pdv",
+      "pedido por local",
+      "semana pedido ya",
+      "mes pedido ya",
+      "pedido latacunga"
+    ],
+    "files": [
+      "ventas/pedidos_ya_por_pdv_mes_semana.md"
+    ],
+    "owner": "Eduardo Naula (Coordinador de Producto)",
+    "updated": "2026-09-22",
+    "row": "| **Pedidos Ya por PDV, mes y semana** | Conteo de órdenes del canal Pedidos Ya por PDV, mes y semana; una orden puede contener varios productos | pedidos ya, ordenes pedidos ya, órdenes pedidos ya, pedidos por pdv, pedidos por local, semana pedidos ya, mes pedidos ya, pedidos latacunga | `ventas/pedidos_ya_por_pdv_mes_semana.md` | Eduardo Naula (Coordinador de Producto) | 2026-09-22 |",
+    "documents": [
+      {
+        "file": "ventas/pedidos_ya_por_pdv_mes_semana.md",
+        "sections": [
+          {
+            "title": "Pedidos Ya por PDV, mes y semana",
+            "start": 0,
+            "end": 12232
+          },
+          {
+            "title": "Lectura de la tabla",
+            "start": 519,
+            "end": 878
+          },
+          {
+            "title": "Datos exportados de Power BI",
+            "start": 878,
+            "end": 12232
+          }
+        ],
+        "sources": []
+      }
+    ]
+  },
+  {
+    "name": "Ventas Históricas por PDV",
+    "keywords": [
+      "venta por pdv",
+      "venta por local",
+      "venta bodega",
+      "ticket promedio local",
+      "transaccione pdv",
+      "ranking locale",
+      "venta historica"
+    ],
+    "files": [
+      "ventas/ventas_por_pdv_historico.md"
+    ],
+    "owner": "Dirección Comercial / Inteligencia de Negocios",
+    "updated": "2026-09-08",
+    "row": "| **Ventas Históricas por PDV** | Facturación mensual, transacciones y ticket promedio de 203 bodegas (Ago 2024 - Sep 2026) | ventas por pdv, ventas por local, ventas bodega, ticket promedio local, transacciones pdv, ranking locales, ventas historicas | `ventas/ventas_por_pdv_historico.md` | Dirección Comercial / Inteligencia de Negocios | 2026-09-08 |",
+    "documents": [
+      {
+        "file": "ventas/ventas_por_pdv_historico.md",
+        "sections": [
+          {
+            "title": "Resumen General Historico",
+            "start": 281,
+            "end": 864
+          },
+          {
+            "title": "Facturacion por Anio",
+            "start": 602,
+            "end": 864
+          },
+          {
+            "title": "Ventas Mensuales Consolidadas (26 Meses)",
+            "start": 864,
+            "end": 2199
+          },
+          {
+            "title": "Top 25 Bodegas con Mayor Facturacion Acumulada",
+            "start": 2199,
+            "end": 5124
+          },
+          {
+            "title": "Directorio Completo de Bodegas / PDVs (203 Locales)",
+            "start": 5124,
+            "end": 25267
+          }
+        ],
+        "sources": []
+      }
+    ]
+  },
+  {
+    "name": "Márgenes y Rentabilidad",
+    "keywords": [
+      "margen",
+      "rentabilidad",
+      "utilidad",
+      "ganancia",
+      "costo",
+      "porcentaje utilidad",
+      "cuanto deja",
+      "producto mas rentable"
+    ],
+    "files": [
+      "finanzas/margenes_utilidad_productos.md"
+    ],
+    "owner": "Eduardo Naula (Coordinador de Producto)",
+    "updated": "2026-09-09",
+    "row": "| **Márgenes y Rentabilidad** | Margen de utilidad porcentual (%) y en dólares ($) de 58 productos del menú | margen, rentabilidad, utilidad, ganancia, costo, porcentaje utilidad, cuánto deja, producto más rentable | `finanzas/margenes_utilidad_productos.md` | Eduardo Naula (Coordinador de Producto) | 2026-09-09 |",
+    "documents": [
+      {
+        "file": "finanzas/margenes_utilidad_productos.md",
+        "sections": [
+          {
+            "title": "💰 Márgenes Oficiales de Utilidad por Producto — Bogati Ecuador",
+            "start": 0,
+            "end": 4358
+          },
+          {
+            "title": "📌 Resumen Estratégico de Rentabilidad",
+            "start": 280,
+            "end": 891
+          },
+          {
+            "title": "🏆 Top 10 Productos con Mayor Margen Porcentual (%)",
+            "start": 891,
+            "end": 1430
+          },
+          {
+            "title": "💵 Top 10 Productos con Mayor Margen en Dinero ($)",
+            "start": 1430,
+            "end": 2019
+          },
+          {
+            "title": "📋 Matriz Completa de Márgenes de Utilidad (58 Productos)",
+            "start": 2019,
+            "end": 4358
+          }
+        ],
+        "sources": []
+      }
+    ]
+  },
+  {
+    "name": "Fichas Técnicas de Costos y PVP",
+    "keywords": [
+      "costo",
+      "costo materia prima",
+      "receta costo",
+      "gramaje",
+      "merma",
+      "pvp",
+      "precio de venta",
+      "rentabilidad receta"
+    ],
+    "files": [
+      "finanzas/fichas_tecnicas_costos_recetas.md"
+    ],
+    "owner": "Eduardo Naula (Coordinador de Producto)",
+    "updated": "2026-09-19",
+    "row": "| **Fichas Técnicas de Costos y PVP** | Desglose oficial de ingredientes, costos unitarios, mermas, PVP de menú y rentabilidad por receta | costos, costo materia prima, receta costos, gramajes, merma, pvp, precio de venta, rentabilidad receta | `finanzas/fichas_tecnicas_costos_recetas.md` | Eduardo Naula (Coordinador de Producto) | 2026-09-19 |",
+    "documents": [
+      {
+        "file": "finanzas/fichas_tecnicas_costos_recetas.md",
+        "sections": [
+          {
+            "title": "📋 Fichas Técnicas Oficiales de Costos y Rentabilidad por Receta — Bogati Ecuador",
+            "start": 0,
+            "end": 10265
+          },
+          {
+            "title": "📊 Matriz Resumen de Costos y PVP Oficial",
+            "start": 457,
+            "end": 6979
+          },
+          {
+            "title": "🥣 Costos de Masas Base y Premezclas de Producción",
+            "start": 6979,
+            "end": 7719
+          },
+          {
+            "title": "🔎 Detalle de Fichas Técnicas por Receta (Ingredientes y Gramajes)",
+            "start": 7719,
+            "end": 10265
+          },
+          {
+            "title": "RECETA No. 051 - AMERICANO (Categoría: Cafetería)",
+            "start": 7790,
+            "end": 8146
+          },
+          {
+            "title": "RECETA No. 008 - TULIPÁN (Categoría: Crocantes)",
+            "start": 8146,
+            "end": 8659
+          },
+          {
+            "title": "RECETA No. 019 - WAFFLE BOGATI (Categoría: Postres)",
+            "start": 8659,
+            "end": 9372
+          },
+          {
+            "title": "RECETA No. 040 - COPA GELAXIA JR (Categoría: Copas)",
+            "start": 9372,
+            "end": 9844
+          },
+          {
+            "title": "RECETA No. 053 - CAPUCHINO (Categoría: Cafetería)",
+            "start": 9844,
+            "end": 10265
+          }
+        ],
+        "sources": []
+      }
+    ]
+  },
+  {
+    "name": "Puntos de Venta (PDVs)",
+    "keywords": [
+      "pdv",
+      "franquicia",
+      "franquiciado",
+      "telefono",
+      "local",
+      "formato",
+      "ciudad",
+      "contacto",
+      "direccion",
+      "correo pdv"
+    ],
+    "files": [
+      "comercial/pdvs_directorio.md"
+    ],
+    "owner": "Dirección Comercial",
+    "updated": "2026-09-08",
+    "row": "| **Puntos de Venta (PDVs)** | Directorio oficial de 155 locales activos, franquiciados, contactos, ciudades y zonas | pdv, franquicia, franquiciado, teléfono, local, formato, ciudad, contacto, dirección, correo pdv | `comercial/pdvs_directorio.md` | Dirección Comercial | 2026-09-08 |",
+    "documents": [
+      {
+        "file": "comercial/pdvs_directorio.md",
+        "sections": [
+          {
+            "title": "Resumen por Provincia",
+            "start": 19521,
+            "end": 20068
+          }
+        ],
+        "sources": []
+      }
+    ]
+  },
+  {
+    "name": "Menús y Precios",
+    "keywords": [
+      "menu",
+      "precio",
+      "carta",
+      "waffle",
+      "helado",
+      "malteada",
+      "valor",
+      "formato",
+      "costo venta"
+    ],
+    "files": [
+      "marketing/menus_por_formato.md"
+    ],
+    "owner": "Equipo de Marketing y Producto",
+    "updated": "2026-09-08",
+    "row": "| **Menús y Precios** | Catálogo de productos y precios de venta según formato (Pick Up, Express, Premium) | menú, precios, carta, waffle, helado, malteada, valor, formato, costo venta | `marketing/menus_por_formato.md` | Equipo de Marketing y Producto | 2026-09-08 |",
+    "documents": [
+      {
+        "file": "marketing/menus_por_formato.md",
+        "sections": [
+          {
+            "title": "1. Formato: Pick Up",
+            "start": 142,
+            "end": 367
+          },
+          {
+            "title": "2. Formato: Express",
+            "start": 367,
+            "end": 660
+          },
+          {
+            "title": "3. Formato: Premium",
+            "start": 660,
+            "end": 937
+          }
+        ],
+        "sources": []
+      }
+    ]
+  },
+  {
+    "name": "Planta / Producción",
+    "keywords": [
+      "planta",
+      "selladora",
+      "envasadora",
+      "calibracion",
+      "temperatura",
+      "mantenimiento",
+      "falla"
+    ],
+    "files": [
+      "procesos/planta/calibracion_selladora.md"
+    ],
+    "owner": "Luis Mendoza (Supervisor de Mantenimiento)",
+    "updated": "2026-09-08",
+    "row": "| **Planta / Producción** | Guías operativas de maquinaria, calibración y envasado | planta, selladora, envasadora, calibración, temperatura, mantenimiento, falla | `procesos/planta/calibracion_selladora.md` | Luis Mendoza (Supervisor de Mantenimiento) | 2026-09-08 |",
+    "documents": [
+      {
+        "file": "procesos/planta/calibracion_selladora.md",
+        "sections": [
+          {
+            "title": "🎯 Objetivo",
+            "start": 262,
+            "end": 389
+          },
+          {
+            "title": "⚠️ Precauciones y EPP Obligatorio",
+            "start": 389,
+            "end": 553
+          },
+          {
+            "title": "📋 Procedimiento de Calibración",
+            "start": 553,
+            "end": 952
+          },
+          {
+            "title": "❓ Solución de Problemas (Troubleshooting)",
+            "start": 952,
+            "end": 1089
+          }
+        ],
+        "sources": []
+      }
+    ]
+  },
+  {
+    "name": "Recetas e Instructivos",
+    "keywords": [
+      "receta",
+      "instructivo",
+      "mise en place",
+      "corte",
+      "helado",
+      "waffle",
+      "crepe",
+      "cafe",
+      "copa",
+      "postre"
+    ],
+    "files": [
+      "procesos/recetas_instructivo.md",
+      "procesos/recetas_copas_crocantes.md",
+      "procesos/recetas_postres_cafeteria_otros.md"
+    ],
+    "owner": "Eduardo Naula (Coordinador de producto)",
+    "updated": "2026-09-14",
+    "row": "| **Recetas e Instructivos** | Manual de recetas, mise en place, cortes, crocantes, copas, postres, cafetería y masas | receta, instructivo, mise en place, cortes, helado, waffle, crepe, cafe, copas, postres | `procesos/recetas_instructivo.md`, `procesos/recetas_copas_crocantes.md`, `procesos/recetas_postres_cafeteria_otros.md` | Eduardo Naula (Coordinador de producto) | 2026-09-14 |",
+    "documents": [
+      {
+        "file": "procesos/recetas_instructivo.md",
+        "sections": [
+          {
+            "title": "INSTRUCTIVO RECETAS BOGATI",
+            "start": 0,
+            "end": 6919
+          },
+          {
+            "title": "MISE EN PLACE",
+            "start": 1453,
+            "end": 2206
+          },
+          {
+            "title": "PREPARACIÓN DEL QUESO",
+            "start": 2206,
+            "end": 3043
+          },
+          {
+            "title": "CORTE DEL QUESO",
+            "start": 2346,
+            "end": 3043
+          },
+          {
+            "title": "CORTE DE FRUTAS",
+            "start": 3043,
+            "end": 5310
+          },
+          {
+            "title": "CORTE DE FRESAS",
+            "start": 3063,
+            "end": 3866
+          },
+          {
+            "title": "CORTE DE DURAZNOS",
+            "start": 3866,
+            "end": 4317
+          },
+          {
+            "title": "CORTE DE PIÑA",
+            "start": 4317,
+            "end": 4569
+          },
+          {
+            "title": "CORTE DE PAPAYA",
+            "start": 4569,
+            "end": 4787
+          },
+          {
+            "title": "CORTE DE SANDÍA",
+            "start": 4787,
+            "end": 5310
+          },
+          {
+            "title": "EQUIPOS Y UTENSILIOS",
+            "start": 5310,
+            "end": 5594
+          },
+          {
+            "title": "VAJILLA Y ALMACENAMIENTO",
+            "start": 5594,
+            "end": 6919
+          }
+        ],
+        "sources": []
+      },
+      {
+        "file": "procesos/recetas_copas_crocantes.md",
+        "sections": [
+          {
+            "title": "RECETAS OFICIALES BOGATI (CROCANTES Y COPAS)",
+            "start": 0,
+            "end": 27971
+          },
+          {
+            "title": "CATEGORÍA: CROCANTES",
+            "start": 136,
+            "end": 7250
+          },
+          {
+            "title": "RECETA No. 001 - CONO MAX 1 SABOR",
+            "start": 161,
+            "end": 749
+          },
+          {
+            "title": "RECETA No. 002 - CONO MAX 2 SABORES",
+            "start": 749,
+            "end": 1464
+          },
+          {
+            "title": "RECETA No. 006 - CONO ESTUDIANTIL",
+            "start": 1464,
+            "end": 2228
+          },
+          {
+            "title": "RECETA No. 003 - CONO BOGATI",
+            "start": 2228,
+            "end": 3082
+          },
+          {
+            "title": "RECETA No. 003 - CONO BOGATI PLUS",
+            "start": 3082,
+            "end": 4096
+          },
+          {
+            "title": "RECETA No. 008 - TULIPAN",
+            "start": 4096,
+            "end": 5083
+          },
+          {
+            "title": "RECETA No. 007 - TULIDUO",
+            "start": 5083,
+            "end": 6159
+          },
+          {
+            "title": "RECETA No. 009 - TULI BOGATI",
+            "start": 6159,
+            "end": 7250
+          },
+          {
+            "title": "CATEGORÍA: COPAS",
+            "start": 7250,
+            "end": 27971
+          },
+          {
+            "title": "RECETA No. 030 - COPA DUO",
+            "start": 7271,
+            "end": 8140
+          },
+          {
+            "title": "RECETA No. 031 - COPA BOGATI",
+            "start": 8140,
+            "end": 9108
+          },
+          {
+            "title": "RECETA No. 032 - COPA MÁGICA",
+            "start": 9108,
+            "end": 10379
+          },
+          {
+            "title": "RECETA No. 033 - COPA SUPER MÁGICA",
+            "start": 10379,
+            "end": 11636
+          },
+          {
+            "title": "RECETA No. 034 - COPA FRESAS BOGATI",
+            "start": 11636,
+            "end": 13479
+          },
+          {
+            "title": "RECETA No. 035 - FRESAS BOGATI JR",
+            "start": 13479,
+            "end": 15399
+          },
+          {
+            "title": "RECETA No. 036 - FRESAS CON CREMA",
+            "start": 15399,
+            "end": 16169
+          },
+          {
+            "title": "RECETA No. 037 - DURAZNOS BOGATI",
+            "start": 16169,
+            "end": 18108
+          },
+          {
+            "title": "RECETA No. 038 - DURAZNOS BOGATI JR.",
+            "start": 18108,
+            "end": 20095
+          },
+          {
+            "title": "RECETA No. 039 - COPA GELAXIA",
+            "start": 20095,
+            "end": 21010
+          },
+          {
+            "title": "RECETA No. 040 - COPA GELAXIA JR.",
+            "start": 21010,
+            "end": 21938
+          },
+          {
+            "title": "RECETA No. 041 - BANANA BOGATI",
+            "start": 21938,
+            "end": 22850
+          },
+          {
+            "title": "RECETA No. 042 - BANANA BOGATI JR",
+            "start": 22850,
+            "end": 23762
+          },
+          {
+            "title": "RECETA No. 043 - COPA LASAÑA",
+            "start": 23762,
+            "end": 24796
+          },
+          {
+            "title": "RECETA No. 044 - COPA LASAÑA JR.",
+            "start": 24796,
+            "end": 25844
+          },
+          {
+            "title": "RECETA No. 045 - ENSALADA DE FRUTAS CON HELADO",
+            "start": 25844,
+            "end": 27146
+          },
+          {
+            "title": "RECETA No. 049 - COPA PROMOCIONAL",
+            "start": 27146,
+            "end": 27971
+          }
+        ],
+        "sources": []
+      },
+      {
+        "file": "procesos/recetas_postres_cafeteria_otros.md",
+        "sections": [
+          {
+            "title": "RECETAS OFICIALES BOGATI (POSTRES, CAFETERÍA Y OTROS)",
+            "start": 0,
+            "end": 27522
+          },
+          {
+            "title": "CATEGORÍA: POSTRES",
+            "start": 150,
+            "end": 10637
+          },
+          {
+            "title": "RECETA No. 026 - COPA CHOCOCAKE JR",
+            "start": 173,
+            "end": 1294
+          },
+          {
+            "title": "RECETA No. 027 - COPA CHOCOCAKE",
+            "start": 1294,
+            "end": 2407
+          },
+          {
+            "title": "RECETA No. 016 - FRESAS Y NUTELLA",
+            "start": 2407,
+            "end": 2959
+          },
+          {
+            "title": "RECETA No. 017 - LODY CAKE CHOCOLATE",
+            "start": 2959,
+            "end": 3800
+          },
+          {
+            "title": "RECETA No. 019 - WAFFLE BOGATI",
+            "start": 3800,
+            "end": 5094
+          },
+          {
+            "title": "RECETA No. 020 - CREPE CON HELADO",
+            "start": 5094,
+            "end": 6815
+          },
+          {
+            "title": "RECETA No. 021 - CREPE SIN HELADO",
+            "start": 6815,
+            "end": 7955
+          },
+          {
+            "title": "RECETA No. 022 - CREPE CON HELADO CONO",
+            "start": 7955,
+            "end": 9435
+          },
+          {
+            "title": "RECETA No. 023 - CREPE SIN HELADO CONO",
+            "start": 9435,
+            "end": 10637
+          },
+          {
+            "title": "CATEGORÍA: CAFETERÍA",
+            "start": 10637,
+            "end": 22774
+          },
+          {
+            "title": "RECETA No. 051 - AMERICANO",
+            "start": 10662,
+            "end": 11311
+          },
+          {
+            "title": "RECETA No. 052 - CHOCOLATE",
+            "start": 11311,
+            "end": 12397
+          },
+          {
+            "title": "RECETA No. 053 - CAPUCHINO",
+            "start": 12397,
+            "end": 13193
+          },
+          {
+            "title": "RECETA No. 054 - MOCACHINO",
+            "start": 13193,
+            "end": 13910
+          },
+          {
+            "title": "RECETA No. 055 - YOGURT BOGATI",
+            "start": 13910,
+            "end": 14679
+          },
+          {
+            "title": "RECETA No. 057 - MILKSHAKE",
+            "start": 14679,
+            "end": 15530
+          },
+          {
+            "title": "RECETA No. 058 - CHOCOLATE AMBATEÑO",
+            "start": 15530,
+            "end": 16880
+          },
+          {
+            "title": "RECETA No. 059 - COMBO YOGURT",
+            "start": 16880,
+            "end": 17662
+          },
+          {
+            "title": "RECETA No. 060 - COMBO CHOCOLATE",
+            "start": 17662,
+            "end": 18322
+          },
+          {
+            "title": "RECETA No. 061 - TORTAS",
+            "start": 18322,
+            "end": 18678
+          },
+          {
+            "title": "RECETA No. 063 - TOSTADA SALAMI",
+            "start": 18678,
+            "end": 19356
+          },
+          {
+            "title": "RECETA No. 064 - TOSTTINI",
+            "start": 19356,
+            "end": 20355
+          },
+          {
+            "title": "RECETA No. 065 - PAN DE YUCA",
+            "start": 20355,
+            "end": 21753
+          },
+          {
+            "title": "RECETA No. 066 - NACHOS",
+            "start": 21753,
+            "end": 22401
+          },
+          {
+            "title": "RECETA No. 074 - MAYONESA BOGATI",
+            "start": 22401,
+            "end": 22774
+          },
+          {
+            "title": "CATEGORÍA: OTROS / BASES Y ESPECIALIDADES",
+            "start": 22774,
+            "end": 27522
+          },
+          {
+            "title": "RECETA No. 072 - MASA WAFFLE BOGATI",
+            "start": 22820,
+            "end": 24031
+          },
+          {
+            "title": "RECETA No. 073 - MASA CREPÉ BOGATI",
+            "start": 24031,
+            "end": 24974
+          },
+          {
+            "title": "RECETA No. 077 - TOPPINGS",
+            "start": 24974,
+            "end": 25498
+          },
+          {
+            "title": "RECETA No. 000 - CREMA",
+            "start": 25498,
+            "end": 26199
+          },
+          {
+            "title": "RECETA No. 057 - PICADA TROPICAL",
+            "start": 26199,
+            "end": 26825
+          },
+          {
+            "title": "RECETA No. 057 - MICHELADO",
+            "start": 26825,
+            "end": 27522
+          }
+        ],
+        "sources": []
+      }
+    ]
+  },
+  {
+    "name": "Campañas y Promociones PDV",
+    "keywords": [
+      "promocione",
+      "campana",
+      "2x1",
+      "descuento",
+      "gift card",
+      "cupone",
+      "promocion local",
+      "beneficio pdv",
+      "ti"
+    ],
+    "files": [
+      "marketing/promociones_campanas_pdv.md"
+    ],
+    "owner": "Eduardo Naula (Coordinador de Producto)",
+    "updated": "2026-09-19",
+    "row": "| **Campañas y Promociones PDV** | Registro oficial de promociones, 2x1, combos, gift cards y descuentos por PDV tramitadas ante TI | promociones, campañas, 2x1, descuentos, gift card, cupones, promocion local, beneficios pdv, ti | `marketing/promociones_campanas_pdv.md` | Eduardo Naula (Coordinador de Producto) | 2026-09-19 |",
+    "documents": [
+      {
+        "file": "marketing/promociones_campanas_pdv.md",
+        "sections": [
+          {
+            "title": "🎯 Registro Oficial de Campañas y Promociones por PDV",
+            "start": 0,
+            "end": 3199
+          },
+          {
+            "title": "📌 Resumen Operativo",
+            "start": 282,
+            "end": 711
+          },
+          {
+            "title": "📋 Detalle Consolidado de Solicitudes y Campañas",
+            "start": 711,
+            "end": 2965
+          },
+          {
+            "title": "🔑 Detalle Especial: Códigos Gift Cards",
+            "start": 2965,
+            "end": 3199
+          }
+        ],
+        "sources": []
+      }
+    ]
+  },
+  {
+    "name": "Historial de Auditoría",
+    "keywords": [
+      "auditoria",
+      "changelog",
+      "quien subio",
+      "cambio",
+      "historial",
+      "versione",
+      "autor"
+    ],
+    "files": [
+      "auditoria/CHANGELOG.md"
+    ],
+    "owner": "Auditoría de Sistema",
+    "updated": "2026-09-19",
+    "row": "| **Historial de Auditoría** | Registro cronológico de cambios, creadores de contenido y huella técnica | auditoría, changelog, quién subió, cambios, historial, versiones, autor | `auditoria/CHANGELOG.md` | Auditoría de Sistema | 2026-09-19 |",
+    "documents": [
+      {
+        "file": "auditoria/CHANGELOG.md",
+        "sections": [
+          {
+            "title": "ðŸ“œ Registro de AuditorÃ­a y Control de Cambios (Changelog)",
+            "start": 0,
+            "end": 8871
+          }
+        ],
+        "sources": [
+          "ventas/productos_pdv/parte_013.csv",
+          "ventas/productos_pdv/parte_012.csv",
+          "ventas/productos_pdv/parte_011.csv",
+          "ventas/productos_pdv/parte_010.csv",
+          "ventas/productos_pdv/parte_009.csv",
+          "ventas/productos_pdv/parte_008.csv",
+          "ventas/productos_pdv/parte_006.csv",
+          "ventas/productos_pdv/parte_005.csv",
+          "ventas/productos_pdv/parte_004.csv",
+          "ventas/productos_pdv/parte_003.csv",
+          "ventas/productos_pdv/parte_002.csv",
+          "ventas/productos_pdv/parte_001.csv"
+        ]
+      }
+    ]
+  }
+]
