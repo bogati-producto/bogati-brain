@@ -33,14 +33,16 @@ El proyecto incluye `vercel.json`, recursos públicos y la función `/api`. Impo
 Configurar estas variables de entorno antes de usarlo en producción:
 
 - `APP_PASSWORD`: clave de acceso compartida del equipo. En Vercel el servicio permanece bloqueado sin esta clave.
-- `KV_REST_API_URL`: endpoint REST de una base Redis compatible con Upstash.
-- `KV_REST_API_TOKEN`: token privado del servicio. Nunca se envía al navegador.
+- `SUPABASE_URL`: URL del proyecto de Supabase.
+- `SUPABASE_SECRET_KEY`: clave privada del servidor (`sb_secret_...`). Como alternativa, se admite `SUPABASE_SERVICE_ROLE_KEY` para una clave JWT heredada. Nunca usar un prefijo `NEXT_PUBLIC_` para estas claves.
 
-La base compartida guarda configuración y documentos bajo `bogati:state:v1`; las actualizaciones usan comparación y escritura atómicas. Sin base conectada el despliegue no permite trabajar para evitar perder datos en almacenamiento temporal. La contraseña es un acceso inicial de equipo; no incluye cuentas individuales, recuperación de clave, auditoría por persona ni limitación distribuida de intentos. Incorporarlas antes de una apertura amplia o si se requiere trazabilidad por vendedor.
+Ejecutar primero `supabase/migrations/202610200001_horeca.sql` en el SQL Editor. Crea las tablas `horeca_config` y `horeca_quotes`, con RLS y permisos limitados al servidor. No otorga acceso a visitantes ni a usuarios del navegador. Las funciones verifican la revisión y aplican cada guardado de manera atómica. Una cotización emitida conserva su copia de datos. Se reservan identificadores opcionales de cliente y vendedor para la futura integración con Brain, sin asumir tablas externas.
 
-El almacenamiento actual mantiene todos los documentos en un registro JSON y es apropiado para una primera operación pequeña. Para alto volumen, migrar a tablas e índices en PostgreSQL, conservando el motor de cálculo y las copias de cada documento.
+El adaptador de Redis anterior se conserva como alternativa cuando no se configura Supabase. Sin almacenamiento remoto configurado, Vercel no permite operar para evitar guardar en un disco temporal. En desarrollo local se mantiene `data/state.json`.
 
-No se han conectado cuentas Vercel ni Redis desde esta entrega. El despliegue y la sincronización real entre equipos necesitan esas conexiones.
+La contraseña del equipo es el acceso inicial; las cuentas individuales y la auditoría por vendedor siguen pendientes. El historial se obtiene completo y necesitará paginación cuando aumente el volumen. La instalación local no migra automáticamente sus documentos o precios a Supabase: el proyecto nuevo inicia con los valores del catálogo de fábrica; se puede importar un respaldo de configuración y guardarlo.
+
+La conexión real y el SQL se verifican después de configurar las variables y desplegar. Las pruebas locales del adaptador usan respuestas simuladas y no confirman por sí solas el acceso a una base remota.
 
 ## Verificación
 
